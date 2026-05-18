@@ -92,6 +92,12 @@ export interface Stage {
   contract: string;
   /** Optional fee tooltip overlay on this stage. */
   feeOnHover?: StageFeeHover;
+  /**
+   * Stage represents a fee deduction in the timeline — renders with muted
+   * ring, navy fill, and a `−` prefix on the amount. Set true on stage 4
+   * once the Philotimo platform fee becomes active.
+   */
+  fee?: boolean;
   /** Stage exists in the timeline but did not execute for this tx. */
   inactive?: boolean;
   /** Final stage — terminates the tracker line. */
