@@ -33,4 +33,4 @@ Markdown
 
 ## Open Technical Questions for Brainstorming
 1.  How will the fiat on-ramp dynamically pass the unique user session/selected charity destination straight into our smart contract function upon a successful credit card swipe?
-2.  Should the platform fee be pulled as fiat directly during the payment proc
+2.  Should the platform fee be pulled as fiat directly during the payment processing stage, or pulled strictly on-chain via the Solidity routing contract?
