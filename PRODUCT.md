@@ -1,4 +1,6 @@
-# Product Requirements Document (PRD) - MVP Phase
+# Philotimo — Product Requirements Document (PRD), MVP Phase
+
+**Product name:** Philotimo (Greek *φιλότιμο*, "love of honor" — the sense of duty to do right by others). All user-facing copy, domains, and assets should use this name.
 
 ## Core Vision
 To eliminate the "black box" of charitable giving by providing donors with a beautiful, immutable, real-time receipt of exactly where their money goes, leveraging blockchain tracking without requiring the user to know anything about crypto.

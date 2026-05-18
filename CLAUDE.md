@@ -1,7 +1,7 @@
-# Claude Code Project Rules: Transparency Charity App
+# Claude Code Project Rules: Philotimo
 
 ## Project Overview
-We are building a highly visual, consumer-facing donation platform that acts as a transparent routing layer on top of Endaoment's decentralized philanthropy infrastructure. The application takes fiat payments, converts them to stablecoins, routes them via a custom smart contract (taking a brand platform fee), and sends the remaining funds directly to Endaoment's smart contracts.
+We are building **Philotimo** — a highly visual, consumer-facing donation platform that acts as a transparent routing layer on top of Endaoment's decentralized philanthropy infrastructure. The name comes from the Greek *φιλότιμο*: the sense of duty to do right by others. The application takes fiat payments, converts them to stablecoins, routes them via a custom smart contract (taking a brand platform fee), and sends the remaining funds directly to Endaoment's smart contracts.
 
 ## Technical Constraints & Guardrails
 *   **Target Network:** Base Layer-2 (EVM). Never use Ethereum mainnet configurations.
