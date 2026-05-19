@@ -10,7 +10,7 @@ export function CreamBand() {
     >
       <div className="mx-auto max-w-[1240px] rounded-2xl bg-cream px-8 py-14 sm:px-12 lg:px-14 lg:py-16">
         <div className="max-w-[640px]">
-          <EyebrowLabel color="#9b6829">The wedge</EyebrowLabel>
+          <EyebrowLabel color="#7a4a14">The wedge</EyebrowLabel>
           <h2
             id="cream-band-heading"
             className="mt-3 text-3xl font-light leading-[1.08] text-ink sm:text-4xl lg:text-[42px]"
