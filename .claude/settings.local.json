@@ -9,7 +9,14 @@
       "Bash(curl -s \"https://api.endaoment.org/v1/activity/featured?chainId=8453&limit=10\")",
       "Bash(curl -s 'https://api.endaoment.org/v2/orgs/search?searchTerm=__TRACKED_VAR__&limit=1')",
       "Bash(curl -s \"https://api.endaoment.org/v1/orgs/0x10e947a3a01206434ed4f9a18573b554de5ceb82\")",
-      "Bash(curl -s \"https://api.endaoment.org/v2/orgs?contractAddress=0x10e947a3a01206434ed4f9a18573b554de5ceb82\")"
+      "Bash(curl -s \"https://api.endaoment.org/v2/orgs?contractAddress=0x10e947a3a01206434ed4f9a18573b554de5ceb82\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'docs\\(epic-3\\): add ADRs for Stripe Crypto Onramp and on-chain fees *)",
+      "Bash(pnpm add *)",
+      "Bash(pnpm build *)",
+      "Bash(pnpm test *)",
+      "Bash(pnpm lint *)",
+      "Bash(git stash *)"
     ]
   }
 }
