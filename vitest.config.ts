@@ -8,8 +8,8 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
-      include: ["src/lib/**/*.ts"],
-      exclude: ["src/lib/wagmi.ts"],
+      include: ["src/lib/**/*.ts", "src/components/**/*.tsx", "src/app/**/*.tsx"],
+      exclude: ["src/lib/wagmi.ts", "src/app/layout.tsx", "src/app/providers.tsx"],
     },
   },
   resolve: {

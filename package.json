@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install --with-deps",
+    "test:a11y:lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
@@ -27,6 +30,9 @@
     "wagmi": "^3.6.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

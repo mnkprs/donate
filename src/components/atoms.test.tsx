@@ -17,7 +17,7 @@ describe("brand atoms", () => {
     expect(html).toContain('width="22"');
     expect(html).toContain('height="22"');
     expect(html).toContain(colors.ink);
-    expect(html).toContain('aria-label="Philotimo"');
+    expect(html).toContain('aria-hidden="true"');
   });
 
   test("PhiMark honors custom size and color props", () => {

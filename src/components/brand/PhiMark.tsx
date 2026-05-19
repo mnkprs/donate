@@ -16,7 +16,8 @@ export function PhiMark({ size = 22, color = colors.ink }: PhiMarkProps) {
       height={size}
       viewBox="0 0 22 22"
       fill="none"
-      aria-label="Philotimo"
+      aria-hidden="true"
+      focusable="false"
     >
       <circle cx="11" cy="11" r="10" stroke={color} strokeWidth="1" />
       <line x1="11" y1="3.5" x2="11" y2="18.5" stroke={color} strokeWidth="1" />

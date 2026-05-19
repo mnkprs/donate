@@ -8,8 +8,8 @@
 export const colors = {
   /** Deep navy — default body text. */
   ink: "#0d253d",
-  /** Helper text, captions, table labels. */
-  inkMute: "#64748d",
+  /** Helper text, captions, table labels. Darkened from #64748d to clear WCAG AA 4.5:1 on tint (#f6f9fc) surfaces. */
+  inkMute: "#56627a",
   /** 1px borders on cards and tables. */
   hairline: "#e3e8ee",
   /** Brand indigo — CTA + link emphasis. */
@@ -28,6 +28,12 @@ export const colors = {
   surfaceTint: "#f6f9fc",
   /** Deep ink — fee tooltip foreground. */
   inkDeep: "#273951",
+  /** Iris hover state — primary CTA :hover / :active fill. */
+  irisHover: "#4434d4",
+  /** Cream band background — warm accent for editorial sections. */
+  cream: "#f5e9d4",
+  /** Urgent red — used sparingly for time-sensitive campaign badges. */
+  urgent: "#c14040",
 } as const;
 
 export type ColorToken = keyof typeof colors;

@@ -12,12 +12,35 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+ * Philotimo design tokens — mirrors src/lib/tokens.ts.
+ * Two sources by intent: this @theme block powers Tailwind utility
+ * classes (bg-iris, text-mute, border-rule). tokens.ts powers
+ * inline styles in the receipt port. Keep them in sync — covered by
+ * src/lib/tokens.test.ts.
+ */
+@theme {
+  --color-iris: #533afd;
+  --color-iris-hover: #4434d4;
+  --color-ink: #0d253d;
+  --color-ink-dark: #1c1e54;
+  --color-slate: #273951;
+  --color-mute: #56627a;
+  --color-steel: #a8c3de;
+  --color-rule: #e3e8ee;
+  --color-rule-soft: #eef2f6;
+  --color-surface: #fafbfc;
+  --color-tint: #f6f9fc;
+  --color-cream: #f5e9d4;
+  --color-urgent: #c14040;
 }
+
+/*
+ * Philotimo is a light-only design (Stripe Design System, DESIGN.md).
+ * The prior dark-mode token overrides flipped --background to #0a0a0a but
+ * left the @theme palette tuned for white surfaces, so mute text fell to
+ * 4.17:1 and Lighthouse a11y dropped below the gate.
+ */
 
 body {
   background: var(--background);

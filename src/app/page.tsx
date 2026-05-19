@@ -1,6 +1,18 @@
-import { PhilotimoReceipt } from "@/components/receipt/PhilotimoReceipt";
-import { RECEIPT_BUNDLE_FIXTURE } from "@/lib/fixtures";
+import { CausesGrid } from "@/components/landing/CausesGrid";
+import { Footer } from "@/components/landing/Footer";
+import { Hero } from "@/components/landing/Hero";
+import { NavBar } from "@/components/landing/NavBar";
+import { getCampaigns } from "@/lib/campaigns";
 
 export default function Home() {
-  return <PhilotimoReceipt bundle={RECEIPT_BUNDLE_FIXTURE} />;
+  return (
+    <>
+      <NavBar />
+      <main>
+        <Hero />
+        <CausesGrid campaigns={getCampaigns()} />
+      </main>
+      <Footer />
+    </>
+  );
 }
