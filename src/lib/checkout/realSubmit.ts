@@ -57,6 +57,7 @@ const SERVER_ERROR_CODES: ReadonlySet<string> = new Set<OnrampErrorCode>([
   "invalid_request",
   "provider_error",
   "not_found",
+  "rate_limited",
 ]);
 
 function isOnrampErrorBody(value: unknown): value is OnrampErrorBody {

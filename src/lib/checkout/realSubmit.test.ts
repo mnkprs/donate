@@ -132,6 +132,24 @@ describe("realSubmit()", () => {
     await expect(call()).rejects.toMatchObject({ code: "provider_error" });
   });
 
+  it("preserves the rate_limited code+message from a 429 (H1 surfaces to the donor)", async () => {
+    const envelope: OnrampErrorBody = {
+      error: {
+        code: "rate_limited",
+        message: "Too many requests. Please slow down and try again shortly.",
+      },
+    };
+    mswServer.use(
+      http.post(SESSION_URL, () => HttpResponse.json(envelope, { status: 429 })),
+    );
+
+    await expect(call()).rejects.toMatchObject({
+      name: "OnrampError",
+      code: "rate_limited",
+      message: "Too many requests. Please slow down and try again shortly.",
+    });
+  });
+
   it("throws code 'unexpected_response' on a non-2xx body that is not an error envelope", async () => {
     mswServer.use(
       http.post(SESSION_URL, () =>
