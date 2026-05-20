@@ -138,9 +138,13 @@ export async function applyOnrampSessionEvent(
 
   const existing = await store.get(parsed.data.id);
   if (!existing) {
-    // Not a session we minted (or it was evicted). Do NOT mark processed: if a
-    // durable store later holds it, a retry can still apply. Returning here also
-    // means we never fabricate a session from webhook data alone.
+    // Not a session we minted (or it was evicted). Return without applying or
+    // fabricating anything from webhook data alone. We leave the event UNMARKED,
+    // but the route still answers 200, so Stripe treats it as acknowledged and
+    // will not redeliver — the event is effectively dropped, not retried. Not
+    // marking it simply avoids persisting a processed marker for a session we
+    // don't own (if reprocessing-on-redeliver were ever required, the route
+    // would have to return a non-2xx here instead).
     return;
   }
 
