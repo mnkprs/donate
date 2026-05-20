@@ -60,7 +60,10 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
   });
 
   it("returns 400 invalid_request when email is missing", async () => {
-    const { email, ...noEmail } = VALID_BODY;
+    const noEmail = {
+      campaignId: VALID_BODY.campaignId,
+      grossCents: VALID_BODY.grossCents,
+    };
     const res = await handleCreateSession(makeRequest(noEmail), deps());
 
     expect(res.status).toBe(400);

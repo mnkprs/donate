@@ -54,6 +54,30 @@ export interface StripeOnrampRequest {
 }
 
 /**
+ * Success body of `POST /api/onramp/session`. Deliberately narrow: the client
+ * only needs where to send the donor next and an id to poll status with. The
+ * Phase 7 `realSubmit` client consumes exactly this shape.
+ */
+export interface OnrampSessionResponse {
+  readonly sessionId: string;
+  readonly redirectUrl: string;
+}
+
+/** Machine-readable error codes returned by the on-ramp API routes. */
+export type OnrampErrorCode = "invalid_request" | "provider_error";
+
+/**
+ * Typed error envelope shared by the on-ramp routes. `code` drives client
+ * branching; `message` is safe to surface (never contains secrets).
+ */
+export interface OnrampErrorBody {
+  readonly error: {
+    readonly code: OnrampErrorCode;
+    readonly message: string;
+  };
+}
+
+/**
  * Persisted on-ramp session record. Created in Phase 4, mutated by the webhook
  * handler in Phase 5, read by the status route in Phase 6.
  */
