@@ -64,7 +64,10 @@ export interface OnrampSessionResponse {
 }
 
 /** Machine-readable error codes returned by the on-ramp API routes. */
-export type OnrampErrorCode = "invalid_request" | "provider_error";
+export type OnrampErrorCode =
+  | "invalid_request"
+  | "provider_error"
+  | "not_found";
 
 /**
  * Typed error envelope shared by the on-ramp routes. `code` drives client
@@ -93,5 +96,27 @@ export interface OnrampSession {
   readonly campaignId: string;
   readonly donorEmail: string;
   /** On-chain settlement transaction hash, populated once status === "settled". */
+  readonly txHash?: string;
+}
+
+/**
+ * Public projection of an `OnrampSession` returned by
+ * `GET /api/onramp/status/[sessionId]` (Phase 6).
+ *
+ * Deliberately NARROW: a `sessionId` is reached without authentication and is a
+ * guessable capability handle (same boundary the Phase 4 idempotency hardening
+ * drew, commit 6e1e34c). So this projection excludes everything sensitive —
+ * `clientSecret` (Stripe embedded-UI secret), `donorEmail` (PII), and
+ * `redirectUrl` (a donor-flow capability, not a status-poll concern). It carries
+ * only what a status poller / the Epic 5 receipt page needs.
+ *
+ * `txHash` is present ONLY once `status === "settled"`; for any other status the
+ * key is omitted entirely (never serialized as `null`).
+ */
+export interface OnrampStatusResponse {
+  readonly sessionId: string;
+  readonly status: OnrampStatus;
+  readonly campaignId: string;
+  readonly grossCents: number;
   readonly txHash?: string;
 }
