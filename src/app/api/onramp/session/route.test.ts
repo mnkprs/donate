@@ -185,6 +185,36 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     expect(stripeCalls).toBe(1);
   });
 
+  it("recreates the session when the idempotency entry is dangling (session evicted)", async () => {
+    let stripeCalls = 0;
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => {
+        stripeCalls += 1;
+        return HttpResponse.json(STRIPE_OK);
+      }),
+    );
+
+    const headers = { [CLIENT_REQUEST_ID_HEADER]: "req_dangle" };
+
+    const first = await handleCreateSession(
+      makeRequest(VALID_BODY, headers),
+      deps(),
+    );
+    // Simulate a process restart: the in-memory session is gone, but the
+    // route-level idempotency entry still points at it.
+    store.reset();
+    const second = await handleCreateSession(
+      makeRequest(VALID_BODY, headers),
+      deps(),
+    );
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    // Fell through and recreated rather than returning a dangling reference.
+    expect(stripeCalls).toBe(2);
+    expect(store.get("cos_test_123")).toBeDefined();
+  });
+
   it("returns 400 when clientRequestId exceeds the allowed length", async () => {
     const res = await handleCreateSession(
       makeRequest(VALID_BODY, {
