@@ -15,23 +15,23 @@ const SESSION: OnrampSession = Object.freeze({
 
 describe("inMemorySessionStore", () => {
   // Map-backed store is process-global; isolate every test.
-  beforeEach(() => {
-    inMemorySessionStore.reset();
+  beforeEach(async () => {
+    await inMemorySessionStore.reset();
   });
 
-  it("returns undefined for an unknown id", () => {
-    expect(inMemorySessionStore.get("cos_nope")).toBeUndefined();
+  it("returns undefined for an unknown id", async () => {
+    expect(await inMemorySessionStore.get("cos_nope")).toBeUndefined();
   });
 
-  it("round-trips a record: put then get returns the same session", () => {
-    inMemorySessionStore.put(SESSION);
-    expect(inMemorySessionStore.get(SESSION.id)).toEqual(SESSION);
+  it("round-trips a record: put then get returns the same session", async () => {
+    await inMemorySessionStore.put(SESSION);
+    expect(await inMemorySessionStore.get(SESSION.id)).toEqual(SESSION);
   });
 
-  it("applies a patch on update and returns the merged record", () => {
-    inMemorySessionStore.put(SESSION);
+  it("applies a patch on update and returns the merged record", async () => {
+    await inMemorySessionStore.put(SESSION);
 
-    const updated = inMemorySessionStore.update(SESSION.id, {
+    const updated = await inMemorySessionStore.update(SESSION.id, {
       status: "settled",
       txHash: "0xabc",
     });
@@ -43,10 +43,10 @@ describe("inMemorySessionStore", () => {
     expect(updated.campaignId).toBe("pcrf");
   });
 
-  it("does not mutate the original record on update (immutability)", () => {
-    inMemorySessionStore.put(SESSION);
+  it("does not mutate the original record on update (immutability)", async () => {
+    await inMemorySessionStore.put(SESSION);
 
-    const updated = inMemorySessionStore.update(SESSION.id, {
+    const updated = await inMemorySessionStore.update(SESSION.id, {
       status: "settled",
     });
 
@@ -54,20 +54,20 @@ describe("inMemorySessionStore", () => {
     expect(updated).not.toBe(SESSION);
     expect(SESSION.status).toBe("created");
     // The store now holds the new record, not the old one.
-    expect(inMemorySessionStore.get(SESSION.id)).toBe(updated);
+    expect(await inMemorySessionStore.get(SESSION.id)).toEqual(updated);
   });
 
-  it("throws when updating an unknown id", () => {
-    expect(() =>
+  it("throws when updating an unknown id", async () => {
+    await expect(
       inMemorySessionStore.update("cos_nope", { status: "settled" }),
-    ).toThrow(/cos_nope/);
+    ).rejects.toThrow(/cos_nope/);
   });
 
-  it("persists records across calls until reset() clears them", () => {
-    inMemorySessionStore.put(SESSION);
-    expect(inMemorySessionStore.get(SESSION.id)).toBeDefined();
+  it("persists records across calls until reset() clears them", async () => {
+    await inMemorySessionStore.put(SESSION);
+    expect(await inMemorySessionStore.get(SESSION.id)).toBeDefined();
 
-    inMemorySessionStore.reset();
-    expect(inMemorySessionStore.get(SESSION.id)).toBeUndefined();
+    await inMemorySessionStore.reset();
+    expect(await inMemorySessionStore.get(SESSION.id)).toBeUndefined();
   });
 });

@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createInMemoryKvStore } from "@/lib/kv/kv-store";
 import { inMemorySessionStore } from "./session-store";
 import {
   applyOnrampSessionEvent,
+  createProcessedEventLog,
   ONRAMP_SESSION_UPDATED_EVENT,
   type OnrampWebhookEvent,
+  type ProcessedEventLog,
 } from "./webhook-handler";
 import type { OnrampSession } from "@/types/onramp";
 
@@ -49,49 +52,49 @@ function updatedEvent(
 
 describe("applyOnrampSessionEvent()", () => {
   const store = inMemorySessionStore;
-  let processedEvents: Set<string>;
+  let processedEvents: ProcessedEventLog;
 
-  beforeEach(() => {
-    store.reset();
-    processedEvents = new Set();
-    store.put(CREATED_SESSION);
+  beforeEach(async () => {
+    await store.reset();
+    processedEvents = createProcessedEventLog(createInMemoryKvStore());
+    await store.put(CREATED_SESSION);
   });
 
   function deps() {
     return { store, processedEvents };
   }
 
-  it("transitions to 'settled' and captures the tx hash on fulfillment_complete", () => {
-    applyOnrampSessionEvent(
+  it("transitions to 'settled' and captures the tx hash on fulfillment_complete", async () => {
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_complete", { transactionId: "0xabc123" }),
       deps(),
     );
 
-    const session = store.get(CREATED_SESSION.id);
+    const session = await store.get(CREATED_SESSION.id);
     expect(session?.status).toBe("settled");
     expect(session?.txHash).toBe("0xabc123");
   });
 
-  it("transitions to 'failed' on a rejected session", () => {
-    applyOnrampSessionEvent(updatedEvent("rejected"), deps());
+  it("transitions to 'failed' on a rejected session", async () => {
+    await applyOnrampSessionEvent(updatedEvent("rejected"), deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("failed");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("failed");
   });
 
-  it("maps in-flight statuses (e.g. fulfillment_processing) to 'pending'", () => {
-    applyOnrampSessionEvent(updatedEvent("fulfillment_processing"), deps());
+  it("maps in-flight statuses (e.g. fulfillment_processing) to 'pending'", async () => {
+    await applyOnrampSessionEvent(updatedEvent("fulfillment_processing"), deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("pending");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("pending");
   });
 
-  it("maps unknown/future intermediate statuses to 'pending' (forward-compatible)", () => {
-    applyOnrampSessionEvent(updatedEvent("some_new_status"), deps());
+  it("maps unknown/future intermediate statuses to 'pending' (forward-compatible)", async () => {
+    await applyOnrampSessionEvent(updatedEvent("some_new_status"), deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("pending");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("pending");
   });
 
-  it("is a no-op for an unknown session id (Stripe may send sessions we don't own)", () => {
-    applyOnrampSessionEvent(
+  it("is a no-op for an unknown session id (Stripe may send sessions we don't own)", async () => {
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_complete", {
         sessionId: "cos_not_ours",
         transactionId: "0xdead",
@@ -100,37 +103,37 @@ describe("applyOnrampSessionEvent()", () => {
     );
 
     // Our session is untouched; nothing is created for the foreign id.
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
-    expect(store.get("cos_not_ours")).toBeUndefined();
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
+    expect(await store.get("cos_not_ours")).toBeUndefined();
   });
 
-  it("is a no-op for event types other than crypto.onramp_session.updated", () => {
+  it("is a no-op for event types other than crypto.onramp_session.updated", async () => {
     const otherEvent: OnrampWebhookEvent = {
       id: "evt_other",
       type: "payment_intent.succeeded",
       data: { object: { id: CREATED_SESSION.id, status: "rejected" } },
     };
 
-    applyOnrampSessionEvent(otherEvent, deps());
+    await applyOnrampSessionEvent(otherEvent, deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
   });
 
-  it("is a no-op when the event payload is malformed (missing session id)", () => {
+  it("is a no-op when the event payload is malformed (missing session id)", async () => {
     const malformed: OnrampWebhookEvent = {
       id: "evt_malformed",
       type: ONRAMP_SESSION_UPDATED_EVENT,
       data: { object: { status: "fulfillment_complete" } },
     };
 
-    applyOnrampSessionEvent(malformed, deps());
+    await applyOnrampSessionEvent(malformed, deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
   });
 
-  it("does not downgrade a settled session (terminal state is absorbing)", () => {
+  it("does not downgrade a settled session (terminal state is absorbing)", async () => {
     // Settle first.
-    applyOnrampSessionEvent(
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_complete", {
         id: "evt_settle",
         transactionId: "0xfinal",
@@ -139,56 +142,59 @@ describe("applyOnrampSessionEvent()", () => {
     );
 
     // A late, out-of-order in-flight event for the same session must not revert.
-    applyOnrampSessionEvent(
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_processing", { id: "evt_late" }),
       deps(),
     );
 
-    const session = store.get(CREATED_SESSION.id);
+    const session = await store.get(CREATED_SESSION.id);
     expect(session?.status).toBe("settled");
     expect(session?.txHash).toBe("0xfinal");
   });
 
-  it("does not revert a failed session on a later event", () => {
-    applyOnrampSessionEvent(updatedEvent("rejected", { id: "evt_fail" }), deps());
-    applyOnrampSessionEvent(
+  it("does not revert a failed session on a later event", async () => {
+    await applyOnrampSessionEvent(
+      updatedEvent("rejected", { id: "evt_fail" }),
+      deps(),
+    );
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_processing", { id: "evt_after_fail" }),
       deps(),
     );
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("failed");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("failed");
   });
 
-  it("is idempotent: replaying the same event.id does not re-mutate the store", () => {
+  it("is idempotent: replaying the same event.id does not re-mutate the store", async () => {
     const updateSpy = vi.spyOn(store, "update");
     const event = updatedEvent("fulfillment_processing", { id: "evt_dupe" });
 
-    applyOnrampSessionEvent(event, deps());
-    applyOnrampSessionEvent(event, deps());
+    await applyOnrampSessionEvent(event, deps());
+    await applyOnrampSessionEvent(event, deps());
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("pending");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("pending");
     // The replay short-circuits before touching the store.
     expect(updateSpy).toHaveBeenCalledTimes(1);
     updateSpy.mockRestore();
   });
 
-  it("refuses to settle (throws, leaves session recoverable) when fulfillment_complete lacks a tx hash", () => {
+  it("refuses to settle (throws, leaves session recoverable) when fulfillment_complete lacks a tx hash", async () => {
     // Stripe populates transaction_id at fulfillment_complete; if a delivery
     // omits it, settling anyway would write a permanently hash-less terminal
     // record. Throw instead → route 500 → Stripe retries with the hash.
     const event = updatedEvent("fulfillment_complete", { id: "evt_no_hash" });
 
-    expect(() => applyOnrampSessionEvent(event, deps())).toThrow();
+    await expect(applyOnrampSessionEvent(event, deps())).rejects.toThrow();
 
     // Session is NOT settled, and the event is NOT marked processed, so a retry
     // carrying the hash can still apply.
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
-    expect(processedEvents.has("evt_no_hash")).toBe(false);
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
+    expect(await processedEvents.has("evt_no_hash")).toBe(false);
   });
 
-  it("applies events out of order: fulfillment_complete with no prior pending still settles", () => {
+  it("applies events out of order: fulfillment_complete with no prior pending still settles", async () => {
     // No intermediate "pending" event was ever delivered.
-    applyOnrampSessionEvent(
+    await applyOnrampSessionEvent(
       updatedEvent("fulfillment_complete", {
         id: "evt_jump",
         transactionId: "0xjump",
@@ -196,7 +202,8 @@ describe("applyOnrampSessionEvent()", () => {
       deps(),
     );
 
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("settled");
-    expect(store.get(CREATED_SESSION.id)?.txHash).toBe("0xjump");
+    const session = await store.get(CREATED_SESSION.id);
+    expect(session?.status).toBe("settled");
+    expect(session?.txHash).toBe("0xjump");
   });
 });

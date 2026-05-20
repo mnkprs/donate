@@ -1,14 +1,16 @@
 import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { mswServer } from "../../../../../vitest.setup";
+import { createInMemoryKvStore } from "@/lib/kv/kv-store";
 import { STRIPE_ONRAMP_URL } from "@/lib/onramp/stripe";
-import { inMemorySessionStore } from "@/lib/onramp/session-store";
-import { STRIPE_OK, TEST_ENV } from "@/lib/onramp/test-fixtures";
 import {
-  CLIENT_REQUEST_ID_HEADER,
-  handleCreateSession,
-  type IdempotencyEntry,
-} from "./route";
+  createIdempotencyIndex,
+  inMemorySessionStore,
+  type IdempotencyIndex,
+} from "@/lib/onramp/session-store";
+import { STRIPE_OK, TEST_ENV } from "@/lib/onramp/test-fixtures";
+import { createRateLimiter, type RateLimiter } from "@/lib/ratelimit/rate-limiter";
+import { CLIENT_REQUEST_ID_HEADER, handleCreateSession } from "./route";
 
 const VALID_BODY = {
   campaignId: "pcrf",
@@ -31,11 +33,11 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
   // The store is a process-global singleton; reset it per test for isolation.
   // The idempotency index is route-level, injected fresh each test.
   const store = inMemorySessionStore;
-  let idempotency: Map<string, IdempotencyEntry>;
+  let idempotency: IdempotencyIndex;
 
-  beforeEach(() => {
-    store.reset();
-    idempotency = new Map();
+  beforeEach(async () => {
+    await store.reset();
+    idempotency = createIdempotencyIndex(createInMemoryKvStore());
   });
 
   function deps() {
@@ -55,7 +57,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
       redirectUrl: "https://crypto.link.com/session/cos_test_123",
     });
 
-    const persisted = store.get("cos_test_123");
+    const persisted = await store.get("cos_test_123");
     expect(persisted?.status).toBe("created");
     expect(persisted?.grossCents).toBe(5000);
   });
@@ -101,7 +103,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     expect(res.status).toBe(502);
     expect((await res.json()).error.code).toBe("provider_error");
     // Nothing persisted on the provider-failure path.
-    expect(store.get("cos_test_123")).toBeUndefined();
+    expect(await store.get("cos_test_123")).toBeUndefined();
   });
 
   it("is idempotent: same clientRequestId returns the cached session and calls Stripe once", async () => {
@@ -202,7 +204,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     );
     // Simulate a process restart: the in-memory session is gone, but the
     // route-level idempotency entry still points at it.
-    store.reset();
+    await store.reset();
     const second = await handleCreateSession(
       makeRequest(VALID_BODY, headers),
       deps(),
@@ -212,7 +214,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     expect(second.status).toBe(200);
     // Fell through and recreated rather than returning a dangling reference.
     expect(stripeCalls).toBe(2);
-    expect(store.get("cos_test_123")).toBeDefined();
+    expect(await store.get("cos_test_123")).toBeDefined();
   });
 
   it("returns 400 when clientRequestId exceeds the allowed length", async () => {
@@ -235,5 +237,47 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
 
     expect(res.status).toBe(400);
     expect((await res.json()).error.code).toBe("invalid_request");
+  });
+
+  it("returns 429 rate_limited and never calls Stripe once the limiter denies (H1)", async () => {
+    let stripeCalls = 0;
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => {
+        stripeCalls += 1;
+        return HttpResponse.json(STRIPE_OK);
+      }),
+    );
+
+    const denying: RateLimiter = {
+      check: async () => ({ allowed: false, limit: 0, remaining: 0, resetAt: 0 }),
+    };
+
+    const res = await handleCreateSession(makeRequest(VALID_BODY), {
+      ...deps(),
+      rateLimiter: denying,
+    });
+
+    expect(res.status).toBe(429);
+    expect((await res.json()).error.code).toBe("rate_limited");
+    // Throttled before any provider work.
+    expect(stripeCalls).toBe(0);
+  });
+
+  it("allows the request through when within the rate-limit budget", async () => {
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => HttpResponse.json(STRIPE_OK)),
+    );
+
+    const limiter = createRateLimiter(createInMemoryKvStore(), {
+      limit: 5,
+      windowSeconds: 60,
+    });
+
+    const res = await handleCreateSession(makeRequest(VALID_BODY), {
+      ...deps(),
+      rateLimiter: limiter,
+    });
+
+    expect(res.status).toBe(200);
   });
 });

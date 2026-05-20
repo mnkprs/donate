@@ -71,7 +71,7 @@ export async function handleGetStatus(
 ): Promise<Response> {
   const { sessionId } = await params;
 
-  const session = deps.store.get(sessionId);
+  const session = await deps.store.get(sessionId);
   if (!session) {
     return errorResponse("not_found", "On-ramp session not found", 404);
   }

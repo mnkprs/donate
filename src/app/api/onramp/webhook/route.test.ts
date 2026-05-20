@@ -1,8 +1,13 @@
 import Stripe from "stripe";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createInMemoryKvStore } from "@/lib/kv/kv-store";
 import { inMemorySessionStore } from "@/lib/onramp/session-store";
 import type { SessionStore } from "@/lib/onramp/session-store";
-import { ONRAMP_SESSION_UPDATED_EVENT } from "@/lib/onramp/webhook-handler";
+import {
+  createProcessedEventLog,
+  ONRAMP_SESSION_UPDATED_EVENT,
+  type ProcessedEventLog,
+} from "@/lib/onramp/webhook-handler";
 import { TEST_ENV } from "@/lib/onramp/test-fixtures";
 import type { OnrampSession } from "@/types/onramp";
 import { handleOnrampWebhook, STRIPE_SIGNATURE_HEADER } from "./route";
@@ -60,12 +65,12 @@ const constructEvent: (p: string, h: string, s: string) => Stripe.Event = (
 
 describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
   const store = inMemorySessionStore;
-  let processedEvents: Set<string>;
+  let processedEvents: ProcessedEventLog;
 
-  beforeEach(() => {
-    store.reset();
-    store.put(CREATED_SESSION);
-    processedEvents = new Set();
+  beforeEach(async () => {
+    await store.reset();
+    await store.put(CREATED_SESSION);
+    processedEvents = createProcessedEventLog(createInMemoryKvStore());
   });
 
   function deps(overrides: Partial<{ store: SessionStore }> = {}) {
@@ -85,7 +90,7 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
     const res = await handleOnrampWebhook(req, deps());
 
     expect(res.status).toBe(200);
-    const session = store.get(CREATED_SESSION.id);
+    const session = await store.get(CREATED_SESSION.id);
     expect(session?.status).toBe("settled");
     expect(session?.txHash).toBe("0xabc123");
   });
@@ -98,8 +103,8 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
 
     expect(res.status).toBe(400);
     // Handler never ran: session unchanged, no event recorded.
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
-    expect(processedEvents.size).toBe(0);
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
+    expect(await processedEvents.has("evt_1")).toBe(false);
   });
 
   it("returns 400 when the stripe-signature header is missing", async () => {
@@ -112,7 +117,7 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
     const res = await handleOnrampWebhook(req, deps());
 
     expect(res.status).toBe(400);
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
   });
 
   it("returns 400 when a validly-signed body is not parseable as a Stripe event", async () => {
@@ -121,17 +126,17 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
     const res = await handleOnrampWebhook(req, deps());
 
     expect(res.status).toBe(400);
-    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("created");
   });
 
   it("returns 500 (so Stripe retries) when the handler throws", async () => {
     const throwingStore: SessionStore = {
-      get: () => CREATED_SESSION,
-      put: () => {},
-      update: () => {
+      get: async () => CREATED_SESSION,
+      put: async () => {},
+      update: async () => {
         throw new Error("store write failed");
       },
-      reset: () => {},
+      reset: async () => {},
     };
 
     const req = signedRequest(

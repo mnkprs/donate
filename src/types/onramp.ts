@@ -67,7 +67,8 @@ export interface OnrampSessionResponse {
 export type OnrampErrorCode =
   | "invalid_request"
   | "provider_error"
-  | "not_found";
+  | "not_found"
+  | "rate_limited";
 
 /**
  * Typed error envelope shared by the on-ramp routes. `code` drives client

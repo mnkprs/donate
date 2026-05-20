@@ -25,8 +25,8 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   // Process-global singleton; reset per test for isolation.
   const store = inMemorySessionStore;
 
-  beforeEach(() => {
-    store.reset();
+  beforeEach(async () => {
+    await store.reset();
   });
 
   function deps() {
@@ -34,7 +34,7 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   }
 
   it("returns 200 with the narrow status projection for a known session", async () => {
-    store.put(makeSession());
+    await store.put(makeSession());
 
     const res = await handleGetStatus(paramsFor("cos_test_123"), deps());
 
@@ -48,7 +48,7 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   });
 
   it("never leaks the clientSecret, donor email, or redirect URL", async () => {
-    store.put(makeSession());
+    await store.put(makeSession());
 
     const res = await handleGetStatus(paramsFor("cos_test_123"), deps());
     const body = await res.json();
@@ -59,9 +59,7 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   });
 
   it("includes txHash once the session is settled", async () => {
-    store.put(
-      makeSession({ status: "settled", txHash: "0xabc123def456" }),
-    );
+    await store.put(makeSession({ status: "settled", txHash: "0xabc123def456" }));
 
     const res = await handleGetStatus(paramsFor("cos_test_123"), deps());
     const body = await res.json();
@@ -72,7 +70,7 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   });
 
   it("omits txHash entirely (not null) for a non-settled session", async () => {
-    store.put(makeSession({ status: "pending" }));
+    await store.put(makeSession({ status: "pending" }));
 
     const res = await handleGetStatus(paramsFor("cos_test_123"), deps());
     const body = await res.json();
@@ -91,7 +89,7 @@ describe("GET /api/onramp/status/[sessionId] — handleGetStatus()", () => {
   });
 
   it("sets Cache-Control: no-store (user-specific, polled state)", async () => {
-    store.put(makeSession());
+    await store.put(makeSession());
 
     const res = await handleGetStatus(paramsFor("cos_test_123"), deps());
 

@@ -16,19 +16,23 @@
  *   5. Success → 200 `{ received: true }`.
  *
  * Deps are injected so the handler is unit-testable against the real verifier
- * (via `stripe.webhooks.generateTestHeaderString`) without the Next runtime.
+ * (via `stripe.webhooks.generateTestHeaderString`) without the Next runtime. The
+ * processed-event log is a {@link ProcessedEventLog}; backed by KV it survives
+ * cold starts and is shared across instances (security review M2).
  */
 
 import Stripe from "stripe";
 import { serverEnv } from "@/lib/env/server";
-import { logger } from "@/lib/log/logger";
+import { onrampKvStore } from "@/lib/onramp/onramp-kv";
 import {
   inMemorySessionStore,
   type SessionStore,
 } from "@/lib/onramp/session-store";
 import {
   applyOnrampSessionEvent,
+  createProcessedEventLog,
   type OnrampWebhookEvent,
+  type ProcessedEventLog,
 } from "@/lib/onramp/webhook-handler";
 
 /** Header Stripe sets carrying the timestamped event signature. */
@@ -44,8 +48,8 @@ type ConstructEvent = (
 export interface WebhookRouteDeps {
   readonly webhookSecret: string;
   readonly store: SessionStore;
-  /** Process-lived set of handled `event.id`s for replay idempotency. */
-  readonly processedEvents: Set<string>;
+  /** Durable, replay-idempotent log of handled `event.id`s. */
+  readonly processedEvents: ProcessedEventLog;
   readonly constructEvent: ConstructEvent;
 }
 
@@ -75,20 +79,18 @@ export async function handleOnrampWebhook(
     event = deps.constructEvent(rawBody, signature, deps.webhookSecret);
   } catch (err: unknown) {
     // Bad signature OR unparseable payload — either way we refuse to act.
-    logger.error(
-      { scope: "onramp/webhook", err },
-      "signature verification failed",
-    );
+    // TODO: swap console for a structured logger (pino/winston) before launch.
+    console.error("[onramp/webhook] signature verification failed:", err);
     return ack("Invalid webhook signature", 400);
   }
 
   try {
-    applyOnrampSessionEvent(event, {
+    await applyOnrampSessionEvent(event, {
       store: deps.store,
       processedEvents: deps.processedEvents,
     });
   } catch (err: unknown) {
-    logger.error({ scope: "onramp/webhook", err }, "event handling failed");
+    console.error("[onramp/webhook] event handling failed:", err);
     // 500 makes Stripe retry; idempotency by event.id keeps the retry safe.
     return ack("Webhook processing failed", 500);
   }
@@ -108,8 +110,8 @@ function getStripe(): Stripe {
   return stripeClient;
 }
 
-/** Process-global processed-event index, paired with the singleton store. */
-const webhookProcessedEvents = new Set<string>();
+/** Processed-event log over the shared (durable when configured) KvStore. */
+const webhookProcessedEvents = createProcessedEventLog(onrampKvStore());
 
 export function POST(request: Request): Promise<Response> {
   const env = serverEnv();

@@ -1,26 +1,25 @@
 /**
- * Pure on-ramp webhook state machine (Epic 3, Phase 5).
+ * Pure on-ramp webhook state machine (Epic 3, Phase 5; async since the M2 fix).
  *
  * Stripe Crypto Onramp emits a SINGLE event topic — `crypto.onramp_session.updated`
- * — every time a session's status changes (verified against Stripe's API docs;
- * the per-action `*.created/fulfilled/failed` names in the original plan do not
- * exist). So this handler branches on the session object's `status` field, not
- * on the event type.
+ * — every time a session's status changes. So this handler branches on the session
+ * object's `status` field, not on the event type.
  *
  * Design guarantees:
  * - **Terminal states are absorbing.** Once a session is `settled` or `failed`,
- *   no later event downgrades it. Stripe does not guarantee delivery order, so a
- *   stale in-flight event can arrive after a terminal one.
+ *   no later event downgrades it. Stripe does not guarantee delivery order.
  * - **Idempotent by `event.id`.** A replayed event (Stripe retries until 2xx) is
- *   a no-op. The processed-id set is injected so the route owns its lifetime.
- * - **Unknown sessions are ignored**, never created — the store is the source of
- *   truth for sessions WE minted.
+ *   a no-op. The {@link ProcessedEventLog} is injected so the route owns its
+ *   lifetime AND its durability — backed by KV it survives cold starts and is
+ *   shared across instances, closing the cross-lambda replay gap (M2).
+ * - **Unknown sessions are ignored**, never created.
  *
  * Kept free of the Next runtime and signature verification so it is trivially
  * unit-testable; the route (`webhook/route.ts`) handles transport + auth.
  */
 
 import { z } from "zod";
+import type { KvStore } from "@/lib/kv/kv-store";
 import type { OnrampSession, OnrampStatus } from "@/types/onramp";
 import type { SessionStore } from "./session-store";
 
@@ -29,8 +28,7 @@ export const ONRAMP_SESSION_UPDATED_EVENT = "crypto.onramp_session.updated";
 
 /**
  * Minimal structural shape of a verified Stripe event. Intentionally narrower
- * than the SDK's `Stripe.Event` so the pure handler has no SDK dependency; the
- * real event is structurally assignable to this.
+ * than the SDK's `Stripe.Event` so the pure handler has no SDK dependency.
  */
 export interface OnrampWebhookEvent {
   readonly id: string;
@@ -38,10 +36,42 @@ export interface OnrampWebhookEvent {
   readonly data: { readonly object: unknown };
 }
 
+/**
+ * Durable record of which `event.id`s have already been applied. Async so a
+ * KV-backed implementation drops in unchanged; replays short-circuit on `has`.
+ */
+export interface ProcessedEventLog {
+  has(eventId: string): Promise<boolean>;
+  add(eventId: string): Promise<void>;
+}
+
 export interface WebhookHandlerDeps {
   readonly store: SessionStore;
-  /** Set of already-processed `event.id`s; replays short-circuit. */
-  readonly processedEvents: Set<string>;
+  readonly processedEvents: ProcessedEventLog;
+}
+
+/** Key namespace for processed-event markers within a (possibly shared) KvStore. */
+const EVENT_PREFIX = "evt:";
+
+/**
+ * Retain processed-event markers well beyond Stripe's retry window (up to ~3
+ * days) so a late retry still short-circuits, while still bounding storage.
+ */
+export const PROCESSED_EVENT_TTL_SECONDS = 7 * 24 * 60 * 60;
+
+/** Build a ProcessedEventLog over any KvStore (in-memory for tests, KV in prod). */
+export function createProcessedEventLog(
+  kv: KvStore,
+  ttlSeconds: number = PROCESSED_EVENT_TTL_SECONDS,
+): ProcessedEventLog {
+  return {
+    async has(eventId) {
+      return kv.has(EVENT_PREFIX + eventId);
+    },
+    async add(eventId) {
+      await kv.set(EVENT_PREFIX + eventId, 1, ttlSeconds);
+    },
+  };
 }
 
 /**
@@ -60,8 +90,7 @@ const onrampSessionObjectSchema = z.object({
 /**
  * Map Stripe's session status onto Philotimo's narrower domain status. Only the
  * two terminal states are matched explicitly; every other (intermediate or
- * future) status is treated as in-flight `pending`, so a Stripe rename of an
- * intermediate status never silently mis-maps to a terminal state.
+ * future) status is treated as in-flight `pending`.
  */
 function toDomainStatus(stripeStatus: string): OnrampStatus {
   switch (stripeStatus) {
@@ -79,23 +108,23 @@ function isTerminal(status: OnrampStatus): boolean {
 }
 
 /**
- * Apply one verified webhook event to the session store. Pure aside from the
- * injected store/set mutations; safe to call repeatedly for the same event.
+ * Apply one verified webhook event to the session store. Safe to call repeatedly
+ * for the same event (idempotent by `event.id`).
  */
-export function applyOnrampSessionEvent(
+export async function applyOnrampSessionEvent(
   event: OnrampWebhookEvent,
   deps: WebhookHandlerDeps,
-): void {
+): Promise<void> {
   const { store, processedEvents } = deps;
 
   // Idempotency: a replayed event must not mutate state a second time.
-  if (processedEvents.has(event.id)) {
+  if (await processedEvents.has(event.id)) {
     return;
   }
 
   // We only act on the onramp session topic; ignore anything else Stripe sends.
   if (event.type !== ONRAMP_SESSION_UPDATED_EVENT) {
-    processedEvents.add(event.id);
+    await processedEvents.add(event.id);
     return;
   }
 
@@ -103,11 +132,11 @@ export function applyOnrampSessionEvent(
   if (!parsed.success) {
     // Can't act on a payload we don't understand; mark processed so Stripe's
     // retries of this exact event don't loop forever.
-    processedEvents.add(event.id);
+    await processedEvents.add(event.id);
     return;
   }
 
-  const existing = store.get(parsed.data.id);
+  const existing = await store.get(parsed.data.id);
   if (!existing) {
     // Not a session we minted (or it was evicted). Do NOT mark processed: if a
     // durable store later holds it, a retry can still apply. Returning here also
@@ -117,7 +146,7 @@ export function applyOnrampSessionEvent(
 
   // Terminal states are absorbing — a late/out-of-order event cannot revert them.
   if (isTerminal(existing.status)) {
-    processedEvents.add(event.id);
+    await processedEvents.add(event.id);
     return;
   }
 
@@ -141,6 +170,6 @@ export function applyOnrampSessionEvent(
       ? { status: nextStatus, txHash: txId }
       : { status: nextStatus };
 
-  store.update(parsed.data.id, patch);
-  processedEvents.add(event.id);
+  await store.update(parsed.data.id, patch);
+  await processedEvents.add(event.id);
 }
