@@ -7,6 +7,7 @@ import { STRIPE_OK, TEST_ENV } from "@/lib/onramp/test-fixtures";
 import {
   CLIENT_REQUEST_ID_HEADER,
   handleCreateSession,
+  type IdempotencyEntry,
 } from "./route";
 
 const VALID_BODY = {
@@ -30,7 +31,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
   // The store is a process-global singleton; reset it per test for isolation.
   // The idempotency index is route-level, injected fresh each test.
   const store = inMemorySessionStore;
-  let idempotency: Map<string, string>;
+  let idempotency: Map<string, IdempotencyEntry>;
 
   beforeEach(() => {
     store.reset();
@@ -129,7 +130,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     expect(stripeCalls).toBe(1);
   });
 
-  it("returns the cached session on retry even when the retry body is garbage", async () => {
+  it("rejects key-reuse with a different payload (409-style conflict) and does not re-call Stripe", async () => {
     let stripeCalls = 0;
     mswServer.use(
       http.post(STRIPE_ONRAMP_URL, () => {
@@ -138,24 +139,71 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
       }),
     );
 
-    const headers = { [CLIENT_REQUEST_ID_HEADER]: "req_xyz" };
+    const headers = { [CLIENT_REQUEST_ID_HEADER]: "req_conflict" };
 
     const first = await handleCreateSession(
       makeRequest(VALID_BODY, headers),
       deps(),
     );
-    // Idempotency must short-circuit BEFORE body parsing.
+    // Same idempotency key, DIFFERENT payload → must not return the first
+    // donor's session. Stripe's own contract: reuse-with-different-params errors.
+    const conflict = await handleCreateSession(
+      makeRequest({ ...VALID_BODY, email: "someone-else@example.com" }, headers),
+      deps(),
+    );
+
+    expect(first.status).toBe(200);
+    expect(conflict.status).toBe(400);
+    expect((await conflict.json()).error.code).toBe("invalid_request");
+    expect(stripeCalls).toBe(1);
+  });
+
+  it("returns 400 for a malformed retry body even when the clientRequestId is present", async () => {
+    let stripeCalls = 0;
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => {
+        stripeCalls += 1;
+        return HttpResponse.json(STRIPE_OK);
+      }),
+    );
+
+    const headers = { [CLIENT_REQUEST_ID_HEADER]: "req_garbage" };
+
+    const first = await handleCreateSession(
+      makeRequest(VALID_BODY, headers),
+      deps(),
+    );
+    // Body is parsed/validated BEFORE the idempotency check, so garbage 400s.
     const retry = await handleCreateSession(
       makeRequest("{not json", headers),
       deps(),
     );
 
     expect(first.status).toBe(200);
-    expect(retry.status).toBe(200);
-    expect(await retry.json()).toEqual({
-      sessionId: "cos_test_123",
-      redirectUrl: "https://crypto.link.com/session/cos_test_123",
-    });
+    expect(retry.status).toBe(400);
+    expect((await retry.json()).error.code).toBe("invalid_request");
     expect(stripeCalls).toBe(1);
+  });
+
+  it("returns 400 when clientRequestId exceeds the allowed length", async () => {
+    const res = await handleCreateSession(
+      makeRequest(VALID_BODY, {
+        [CLIENT_REQUEST_ID_HEADER]: "x".repeat(129),
+      }),
+      deps(),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("invalid_request");
+  });
+
+  it("rejects an over-cap grossCents above MAX_AMOUNT_CENTS with 400", async () => {
+    const res = await handleCreateSession(
+      makeRequest({ ...VALID_BODY, grossCents: 2_000_000 }),
+      deps(),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.code).toBe("invalid_request");
   });
 });
