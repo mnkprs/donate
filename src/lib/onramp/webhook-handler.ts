@@ -122,12 +122,14 @@ export function applyOnrampSessionEvent(
   }
 
   const nextStatus = toDomainStatus(parsed.data.status);
-  const patch: Partial<OnrampSession> = { status: nextStatus };
-
   const txId = parsed.data.transaction_details?.transaction_id;
-  if (nextStatus === "settled" && txId) {
-    patch.txHash = txId;
-  }
+
+  // Build the patch in one expression — OnrampSession fields are readonly, and
+  // the tx hash only exists once Stripe reports settlement.
+  const patch: Partial<OnrampSession> =
+    nextStatus === "settled" && txId
+      ? { status: nextStatus, txHash: txId }
+      : { status: nextStatus };
 
   store.update(parsed.data.id, patch);
   processedEvents.add(event.id);
