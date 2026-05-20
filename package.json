@@ -12,7 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps",
-    "test:a11y:lighthouse": "lhci autorun"
+    "test:a11y:lighthouse": "lhci autorun",
+    "postinstall": "node scripts/patch-chrome-launcher.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
@@ -46,7 +47,6 @@
     "eslint-config-next": "16.2.6",
     "happy-dom": "^20.9.0",
     "msw": "^2.14.6",
-    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.6"
