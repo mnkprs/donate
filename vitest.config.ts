@@ -10,7 +10,12 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       include: ["src/lib/**/*.ts", "src/components/**/*.tsx", "src/app/**/*.tsx"],
-      exclude: ["src/lib/wagmi.ts", "src/app/layout.tsx", "src/app/providers.tsx"],
+      exclude: [
+        "src/lib/wagmi.ts",
+        "src/app/layout.tsx",
+        "src/app/providers.tsx",
+        "src/lib/onramp/test-fixtures.ts",
+      ],
     },
   },
   resolve: {
