@@ -66,8 +66,13 @@ const MAX_CLIENT_REQUEST_ID_LENGTH = 128;
 /** Printable ASCII only — no control chars, no multi-byte padding attacks. */
 const CLIENT_REQUEST_ID_PATTERN = /^[\x21-\x7e]+$/;
 
-/** Per-IP budget for session creation: each call costs a billable Stripe request. */
-const SESSION_RATE_LIMIT = 20;
+/**
+ * Per-(IP+campaign) budget for session creation: each accepted call costs a
+ * billable Stripe request, so this is the H1 cost/DoS throttle. 5/60s matches the
+ * remediation plan; the per-campaign split can't meaningfully widen the attack
+ * window at a budget this small even if a flooder rotates campaignIds.
+ */
+const SESSION_RATE_LIMIT = 5;
 const SESSION_RATE_WINDOW_SECONDS = 60;
 
 /**
