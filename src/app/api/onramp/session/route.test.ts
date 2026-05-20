@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mswServer } from "../../../../../vitest.setup";
 import { createInMemoryKvStore } from "@/lib/kv/kv-store";
+import { logger } from "@/lib/log/logger";
 import { STRIPE_ONRAMP_URL } from "@/lib/onramp/stripe";
 import {
   createIdempotencyIndex,
@@ -92,6 +93,7 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
   });
 
   it("returns 502 provider_error and persists nothing when Stripe fails", async () => {
+    const logSpy = vi.spyOn(logger, "error").mockImplementation(() => logger);
     mswServer.use(
       http.post(STRIPE_ONRAMP_URL, () =>
         HttpResponse.json({ error: { message: "boom" } }, { status: 500 }),
@@ -102,6 +104,10 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
 
     expect(res.status).toBe(502);
     expect((await res.json()).error.code).toBe("provider_error");
+    // Provider failure is logged through the structured logger, not console (L3).
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy.mock.calls[0][0]).toMatchObject({ scope: "onramp/session" });
+    logSpy.mockRestore();
     // Nothing persisted on the provider-failure path.
     expect(await store.get("cos_test_123")).toBeUndefined();
   });
@@ -314,5 +320,84 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     });
 
     expect(res.status).toBe(200);
+  });
+
+  it("fails open and proceeds to create when the limiter throws (Decision 2)", async () => {
+    let stripeCalls = 0;
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => {
+        stripeCalls += 1;
+        return HttpResponse.json(STRIPE_OK);
+      }),
+    );
+
+    // A KV blip on the throttle path must never block a donor: the limiter
+    // throwing is treated as "allow", logged at warn, and the create proceeds.
+    const throwing: RateLimiter = {
+      check: async () => {
+        throw new Error("kv unreachable");
+      },
+    };
+    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => logger);
+
+    const res = await handleCreateSession(makeRequest(VALID_BODY), {
+      ...deps(),
+      rateLimiter: throwing,
+    });
+
+    expect(res.status).toBe(200);
+    expect(stripeCalls).toBe(1);
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("sends a Retry-After header (integer seconds from resetAt) on a 429", async () => {
+    const resetAt = Date.now() + 45_000;
+    const denying: RateLimiter = {
+      check: async () => ({ allowed: false, limit: 5, remaining: 0, resetAt }),
+    };
+
+    const res = await handleCreateSession(makeRequest(VALID_BODY), {
+      ...deps(),
+      rateLimiter: denying,
+    });
+
+    expect(res.status).toBe(429);
+    const retryAfter = res.headers.get("Retry-After");
+    expect(retryAfter).not.toBeNull();
+    const seconds = Number(retryAfter);
+    expect(Number.isInteger(seconds)).toBe(true);
+    expect(seconds).toBeGreaterThan(0);
+    expect(seconds).toBeLessThanOrEqual(45);
+  });
+
+  it("keys the limiter by IP + campaignId (same IP, different campaign → distinct keys)", async () => {
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () => HttpResponse.json(STRIPE_OK)),
+    );
+
+    const seen: string[] = [];
+    const recording: RateLimiter = {
+      check: async (identifier) => {
+        seen.push(identifier);
+        return { allowed: true, limit: 5, remaining: 4, resetAt: 0 };
+      },
+    };
+    const sharedIp = { "x-forwarded-for": "203.0.113.7" };
+
+    await handleCreateSession(
+      makeRequest({ ...VALID_BODY, campaignId: "alpha" }, sharedIp),
+      { ...deps(), rateLimiter: recording },
+    );
+    await handleCreateSession(
+      makeRequest({ ...VALID_BODY, campaignId: "bravo" }, sharedIp),
+      { ...deps(), rateLimiter: recording },
+    );
+
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).not.toBe(seen[1]);
+    expect(seen[0]).toContain("203.0.113.7");
+    expect(seen[0]).toContain("alpha");
+    expect(seen[1]).toContain("bravo");
   });
 });

@@ -30,7 +30,12 @@ const ERROR_BODY_MAX_CHARS = 300;
 const stripeOnrampResponseSchema = z.object({
   id: z.string().min(1),
   client_secret: z.string().min(1),
-  redirect_url: z.string().url(),
+  // Must be an https: URL. The value flows server → client → window.location
+  // .assign(redirectUrl), so a non-TLS or scheme-bearing URL (`http:`,
+  // `javascript:`, `data:`) would be an open-redirect / script-injection vector
+  // if a spoofed or changed upstream response ever slipped one through. The
+  // source is Stripe over TLS, so this is defense-in-depth (security review L1).
+  redirect_url: z.string().url().startsWith("https://"),
 });
 
 /** Flatten the typed request into Stripe's bracket-encoded form body. */

@@ -1,5 +1,6 @@
 import Stripe from "stripe";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { logger } from "@/lib/log/logger";
 import { createInMemoryKvStore } from "@/lib/kv/kv-store";
 import { inMemorySessionStore } from "@/lib/onramp/session-store";
 import type { SessionStore } from "@/lib/onramp/session-store";
@@ -71,6 +72,10 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
     await store.reset();
     await store.put(CREATED_SESSION);
     processedEvents = createProcessedEventLog(createInMemoryKvStore());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   function deps(overrides: Partial<{ store: SessionStore }> = {}) {
@@ -146,5 +151,38 @@ describe("POST /api/onramp/webhook — handleOnrampWebhook()", () => {
     const res = await handleOnrampWebhook(req, deps({ store: throwingStore }));
 
     expect(res.status).toBe(500);
+  });
+
+  it("logs handler failures through the structured logger, not console (L3)", async () => {
+    const logSpy = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const throwingStore: SessionStore = {
+      get: async () => CREATED_SESSION,
+      put: async () => {},
+      update: async () => {
+        throw new Error("store write failed");
+      },
+      reset: async () => {},
+    };
+    const req = signedRequest(
+      eventPayload("fulfillment_complete", { transactionId: "0xabc" }),
+    );
+
+    await handleOnrampWebhook(req, deps({ store: throwingStore }));
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const [fields, msg] = logSpy.mock.calls[0];
+    expect(fields).toMatchObject({ scope: "onramp/webhook" });
+    expect((fields as { err: unknown }).err).toBeInstanceOf(Error);
+    expect(typeof msg).toBe("string");
+  });
+
+  it("logs signature-verification failures through the structured logger (L3)", async () => {
+    const logSpy = vi.spyOn(logger, "error").mockImplementation(() => logger);
+    const req = signedRequest(eventPayload("rejected"), "whsec_wrong_secret");
+
+    await handleOnrampWebhook(req, deps());
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy.mock.calls[0][0]).toMatchObject({ scope: "onramp/webhook" });
   });
 });

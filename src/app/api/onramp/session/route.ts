@@ -40,6 +40,7 @@ import {
 import {
   createRateLimiter,
   type RateLimiter,
+  type RateLimitResult,
 } from "@/lib/ratelimit/rate-limiter";
 import type {
   CreateSessionInput,
@@ -106,17 +107,22 @@ const defaultSleep = (ms: number): Promise<void> =>
 const IDEMPOTENCY_POLL_ATTEMPTS = 40;
 const IDEMPOTENCY_POLL_INTERVAL_MS = 50;
 
-function jsonResponse(body: unknown, status: number): Response {
-  return Response.json(body, { status });
+function jsonResponse(
+  body: unknown,
+  status: number,
+  headers?: HeadersInit,
+): Response {
+  return Response.json(body, { status, headers });
 }
 
 function errorResponse(
   code: OnrampErrorCode,
   message: string,
   status: number,
+  headers?: HeadersInit,
 ): Response {
   const body: OnrampErrorBody = { error: { code, message } };
-  return jsonResponse(body, status);
+  return jsonResponse(body, status, headers);
 }
 
 function toResponse(session: OnrampSession): OnrampSessionResponse {
@@ -200,20 +206,7 @@ export async function handleCreateSession(
   const { env, store, idempotency, rateLimiter } = deps;
   const sleep = deps.sleep ?? defaultSleep;
 
-  // 1. Throttle per client BEFORE any work — each accepted call costs a Stripe
-  //    request, so an unauthenticated flood is a cost/DoS vector (H1).
-  if (rateLimiter) {
-    const verdict = await rateLimiter.check(clientIdentifier(request));
-    if (!verdict.allowed) {
-      return errorResponse(
-        "rate_limited",
-        "Too many requests. Please slow down and try again shortly.",
-        429,
-      );
-    }
-  }
-
-  // 2. Validate the idempotency key's FORMAT (presence is optional).
+  // 1. Validate the idempotency key's FORMAT (presence is optional).
   const rawKey = request.headers.get(CLIENT_REQUEST_ID_HEADER);
   if (rawKey !== null) {
     if (
@@ -229,7 +222,7 @@ export async function handleCreateSession(
   }
   const clientRequestId = rawKey;
 
-  // 3. Parse + validate the donor's checkout payload (before idempotency, so a
+  // 2. Parse + validate the donor's checkout payload (before idempotency, so a
   //    malformed retry is a clear 400 rather than a silent cache hit).
   let raw: unknown;
   try {
@@ -256,6 +249,38 @@ export async function handleCreateSession(
     grossCents: parsed.data.grossCents,
     email: parsed.data.email,
   };
+
+  // 3. Throttle per client AFTER parsing so the key can include campaignId (each
+  //    accepted call costs a billable Stripe request — an unauthenticated flood
+  //    is the H1 cost/DoS vector). Fail-open on limiter error (Decision 2): a KV
+  //    blip must never block a donor, so a throw is logged and treated as allow.
+  if (rateLimiter) {
+    let verdict: RateLimitResult | undefined;
+    try {
+      verdict = await rateLimiter.check(
+        `${clientIdentifier(request)}:${input.campaignId}`,
+      );
+    } catch (err: unknown) {
+      logger.warn(
+        { err, scope: "onramp/session" },
+        "rate limiter failed; allowing request (fail-open)",
+      );
+    }
+    if (verdict && !verdict.allowed) {
+      // Tell the client when to retry: whole seconds until the window resets,
+      // floored at 1 so the header is always a positive integer.
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((verdict.resetAt - Date.now()) / 1000),
+      );
+      return errorResponse(
+        "rate_limited",
+        "Too many requests. Please slow down and try again shortly.",
+        429,
+        { "Retry-After": String(retryAfterSeconds) },
+      );
+    }
+  }
 
   // 4. Idempotency with an atomic reservation (security review M1). The key
   //    alone is not a capability — it must be paired with a matching payload.
@@ -302,8 +327,10 @@ export async function handleCreateSession(
     session = await createOnrampSession(input, env);
   } catch (err: unknown) {
     // Surface server-side for diagnostics; the client gets only a generic 502.
-    // TODO: swap console for a structured logger (pino/winston) before launch.
-    console.error("[onramp/session] Stripe session creation failed:", err);
+    logger.error(
+      { err, scope: "onramp/session" },
+      "Stripe session creation failed",
+    );
     return errorResponse(
       "provider_error",
       "Unable to create on-ramp session with the payment provider",

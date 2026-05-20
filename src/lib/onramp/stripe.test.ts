@@ -104,6 +104,30 @@ describe("createOnrampSession()", () => {
     );
   });
 
+  it("rejects a non-https redirect_url scheme (javascript:) as a defense against a spoofed upstream (L1)", async () => {
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () =>
+        HttpResponse.json({ ...STRIPE_OK, redirect_url: "javascript:alert(1)" }),
+      ),
+    );
+
+    await expect(createOnrampSession(VALID_INPUT, TEST_ENV)).rejects.toThrow(
+      /Unexpected Stripe onramp response/,
+    );
+  });
+
+  it("rejects an http:// (non-TLS) redirect_url (L1)", async () => {
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, () =>
+        HttpResponse.json({ ...STRIPE_OK, redirect_url: "http://crypto.link.com/x" }),
+      ),
+    );
+
+    await expect(createOnrampSession(VALID_INPUT, TEST_ENV)).rejects.toThrow(
+      /Unexpected Stripe onramp response/,
+    );
+  });
+
   it("propagates buildSessionRequest validation errors before any network call", async () => {
     // No handler registered: if a request escaped, MSW's onUnhandledRequest:"error" would
     // throw a different "[MSW]" error. A /grossCents/ error proves we failed fast pre-fetch.

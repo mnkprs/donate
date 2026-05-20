@@ -23,6 +23,7 @@
 
 import Stripe from "stripe";
 import { serverEnv } from "@/lib/env/server";
+import { logger } from "@/lib/log/logger";
 import { onrampKvStore } from "@/lib/onramp/onramp-kv";
 import {
   inMemorySessionStore,
@@ -79,8 +80,10 @@ export async function handleOnrampWebhook(
     event = deps.constructEvent(rawBody, signature, deps.webhookSecret);
   } catch (err: unknown) {
     // Bad signature OR unparseable payload — either way we refuse to act.
-    // TODO: swap console for a structured logger (pino/winston) before launch.
-    console.error("[onramp/webhook] signature verification failed:", err);
+    logger.error(
+      { err, scope: "onramp/webhook" },
+      "signature verification failed",
+    );
     return ack("Invalid webhook signature", 400);
   }
 
@@ -90,7 +93,7 @@ export async function handleOnrampWebhook(
       processedEvents: deps.processedEvents,
     });
   } catch (err: unknown) {
-    console.error("[onramp/webhook] event handling failed:", err);
+    logger.error({ err, scope: "onramp/webhook" }, "event handling failed");
     // 500 makes Stripe retry; idempotency by event.id keeps the retry safe.
     return ack("Webhook processing failed", 500);
   }

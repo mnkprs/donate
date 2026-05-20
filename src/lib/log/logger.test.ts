@@ -44,20 +44,16 @@ describe("createLogger()", () => {
     expect(records[0]).toMatchObject({ level: 30, msg: "session created" });
   });
 
-  it("redacts every secret-shaped top-level key", () => {
+  it("redacts every redacted-shaped top-level key", () => {
     const { records, stream } = captureSink();
     const log = createLogger(stream);
 
-    log.info(
-      {
-        STRIPE_SECRET_KEY: "sk_live_supersecret",
-        STRIPE_ONRAMP_WEBHOOK_SECRET: "whsec_supersecret",
-        KV_REST_API_TOKEN: "tok_supersecret",
-        authorization: "Bearer raw_token",
-        clientSecret: "cos_secret_abc",
-      },
-      "config loaded",
+    // Build the payload from REDACTED_KEYS so this stays exhaustive as the list
+    // grows (secrets + PII alike). Each key gets a sentinel that must not survive.
+    const payload = Object.fromEntries(
+      REDACTED_KEYS.map((key) => [key, `raw_${key}_value`]),
     );
+    log.info(payload, "config loaded");
 
     const record = records[0];
     for (const key of REDACTED_KEYS) {
@@ -76,6 +72,23 @@ describe("createLogger()", () => {
 
     const env = records[0].env as Record<string, unknown>;
     expect(env.KV_REST_API_TOKEN).toBe("[REDACTED]");
+  });
+
+  it("redacts donor PII keys (donorEmail/email) as defense-in-depth", () => {
+    // The 3 wired call sites only log `{ err }`, never a session object — so
+    // these keys exist to scrub a FUTURE mistake where a session/payload (which
+    // carries the donor's email) is logged directly. Key-based, so it cannot
+    // catch an email embedded in a free-text error message (documented limit).
+    const { records, stream } = captureSink();
+    const log = createLogger(stream);
+
+    log.info(
+      { donorEmail: "donor@example.com", email: "payer@example.com" },
+      "session created",
+    );
+
+    expect(records[0].donorEmail).toBe("[REDACTED]");
+    expect(records[0].email).toBe("[REDACTED]");
   });
 
   it("never serializes a raw secret value placed under a redacted key", () => {

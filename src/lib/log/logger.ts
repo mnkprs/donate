@@ -15,13 +15,21 @@ import pino, { type DestinationStream, type Logger } from "pino";
  *   level deep (`{ env: { KV_REST_API_TOKEN } }`), not arbitrarily nested.
  */
 
-/** Secret-shaped keys whose values are replaced with the censor token. */
+/**
+ * Secret- and PII-shaped keys whose values are replaced with the censor token.
+ * The first group is secret material; `donorEmail`/`email` are donor PII added
+ * as defense-in-depth (security review L3) — the wired call sites only log
+ * `{ err }`, but these keys scrub a future mistake where a session or payload
+ * object (which carries the donor's email) is logged directly.
+ */
 export const REDACTED_KEYS = [
   "STRIPE_SECRET_KEY",
   "STRIPE_ONRAMP_WEBHOOK_SECRET",
   "KV_REST_API_TOKEN",
   "authorization",
   "clientSecret",
+  "donorEmail",
+  "email",
 ] as const;
 
 const CENSOR = "[REDACTED]";
