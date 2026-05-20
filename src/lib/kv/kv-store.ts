@@ -16,6 +16,14 @@ export interface KvStore {
   get<T>(key: string): Promise<T | null>;
   /** Stores `value`, optionally expiring it after `ttlSeconds`. */
   set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
+  /**
+   * Atomic set-if-absent (Redis `SET … NX`). Writes `value` (optionally with
+   * `ttlSeconds`) ONLY when `key` is currently absent, returning `true` if it
+   * won the write and `false` if a live value already existed. This is the
+   * lock primitive behind the idempotency reservation (M1) and the webhook
+   * processed-event claim (H2) — both need "first writer wins" atomicity.
+   */
+  setNx<T>(key: string, value: T, ttlSeconds?: number): Promise<boolean>;
   /** True iff the key is present and unexpired. */
   has(key: string): Promise<boolean>;
   /** Removes the key (no-op if absent). */
@@ -105,6 +113,14 @@ export function createInMemoryKvStore(
 
     async set<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
       write(key, { value, expiresAt: expiryFor(ttlSeconds) });
+    },
+
+    async setNx<T>(key: string, value: T, ttlSeconds?: number): Promise<boolean> {
+      // Atomic by construction: single-threaded JS means nothing interleaves
+      // between this presence check and the write (no `await` in between).
+      if (readLive(key) !== undefined) return false;
+      write(key, { value, expiresAt: expiryFor(ttlSeconds) });
+      return true;
     },
 
     async has(key: string): Promise<boolean> {

@@ -217,6 +217,41 @@ describe("POST /api/onramp/session — handleCreateSession()", () => {
     expect(await store.get("cos_test_123")).toBeDefined();
   });
 
+  it("under concurrency, two same-key creates call Stripe once and both get the same session (M1 TOCTOU)", async () => {
+    // Gate the Stripe response so the FIRST (winning) request is still in-flight
+    // when the SECOND arrives — the exact interleaving the TOCTOU race needs.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let stripeCalls = 0;
+    mswServer.use(
+      http.post(STRIPE_ONRAMP_URL, async () => {
+        stripeCalls += 1;
+        await gate;
+        return HttpResponse.json(STRIPE_OK);
+      }),
+    );
+
+    const headers = { [CLIENT_REQUEST_ID_HEADER]: "req_race" };
+    const yieldLoop = () => new Promise((r) => setImmediate(r));
+
+    // A starts, wins the reservation, and parks on the gated Stripe call.
+    const a = handleCreateSession(makeRequest(VALID_BODY, headers), deps());
+    await yieldLoop();
+    // B starts: it must observe A's reservation and wait, not call Stripe again.
+    const b = handleCreateSession(makeRequest(VALID_BODY, headers), deps());
+    await yieldLoop();
+    release();
+
+    const [ra, rb] = await Promise.all([a, b]);
+
+    expect(ra.status).toBe(200);
+    expect(rb.status).toBe(200);
+    expect(await ra.json()).toEqual(await rb.json());
+    expect(stripeCalls).toBe(1);
+  });
+
   it("returns 400 when clientRequestId exceeds the allowed length", async () => {
     const res = await handleCreateSession(
       makeRequest(VALID_BODY, {

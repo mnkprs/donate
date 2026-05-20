@@ -29,9 +29,11 @@ import { MAX_AMOUNT_CENTS, MIN_AMOUNT_CENTS } from "@/lib/checkout/validation";
 import { CLIENT_REQUEST_ID_HEADER } from "@/lib/onramp/idempotency";
 import { onrampKvStore } from "@/lib/onramp/onramp-kv";
 import { createOnrampSession } from "@/lib/onramp/stripe";
+import { logger } from "@/lib/log/logger";
 import {
   createIdempotencyIndex,
   inMemorySessionStore,
+  type IdempotencyEntry,
   type IdempotencyIndex,
   type SessionStore,
 } from "@/lib/onramp/session-store";
@@ -87,7 +89,22 @@ export interface CreateSessionDeps {
   readonly idempotency: IdempotencyIndex;
   /** Optional per-client throttle; when omitted, no rate limiting is applied. */
   readonly rateLimiter?: RateLimiter;
+  /** Injectable timer used by the reservation poll; defaults to real `setTimeout`. */
+  readonly sleep?: (ms: number) => Promise<void>;
 }
+
+/** Real-timer sleep; overridable via deps so tests stay deterministic. */
+const defaultSleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Loser poll budget while a reservation is in flight: ~2s total (40 × 50ms),
+ * comfortably inside the 60s reservation TTL. Covers a normal Stripe round-trip
+ * with margin; on exhaustion the loser falls through and creates (the rare
+ * crashed-winner case), trading a possible duplicate for never wedging a donor.
+ */
+const IDEMPOTENCY_POLL_ATTEMPTS = 40;
+const IDEMPOTENCY_POLL_INTERVAL_MS = 50;
 
 function jsonResponse(body: unknown, status: number): Response {
   return Response.json(body, { status });
@@ -133,11 +150,55 @@ function hashPayload(input: CreateSessionInput): string {
   return createHash("sha256").update(canonical).digest("hex");
 }
 
+/**
+ * Turn an EXISTING idempotency entry into a client Response, or return `null` to
+ * signal "fall through and create a fresh session". Three outcomes:
+ *   - payload clash (either state) → 400 (the key is not a bearer capability);
+ *   - committed + session present  → 200 with the cached session;
+ *   - reserved (concurrent create) → poll until the winner commits, then 200.
+ * A committed-but-evicted entry (dangling) or an exhausted poll both return
+ * `null` so the caller recreates.
+ */
+async function resolveExistingEntry(
+  entry: IdempotencyEntry,
+  clientRequestId: string,
+  payloadHash: string,
+  store: SessionStore,
+  idempotency: IdempotencyIndex,
+  sleep: (ms: number) => Promise<void>,
+): Promise<Response | null> {
+  if (entry.payloadHash !== payloadHash) {
+    return errorResponse(
+      "invalid_request",
+      `${CLIENT_REQUEST_ID_HEADER} was already used with a different request`,
+      400,
+    );
+  }
+
+  if (entry.state === "committed") {
+    const existing = await store.get(entry.sessionId);
+    return existing ? jsonResponse(toResponse(existing), 200) : null;
+  }
+
+  // Reserved: a concurrent create owns this key. Poll briefly for its commit.
+  for (let attempt = 0; attempt < IDEMPOTENCY_POLL_ATTEMPTS; attempt += 1) {
+    await sleep(IDEMPOTENCY_POLL_INTERVAL_MS);
+    const latest = await idempotency.get(clientRequestId);
+    if (latest === undefined) break; // reservation expired (winner crashed)
+    if (latest.state === "committed" && latest.payloadHash === payloadHash) {
+      const existing = await store.get(latest.sessionId);
+      return existing ? jsonResponse(toResponse(existing), 200) : null;
+    }
+  }
+  return null; // poll exhausted / reservation gone → recreate
+}
+
 export async function handleCreateSession(
   request: Request,
   deps: CreateSessionDeps,
 ): Promise<Response> {
   const { env, store, idempotency, rateLimiter } = deps;
+  const sleep = deps.sleep ?? defaultSleep;
 
   // 1. Throttle per client BEFORE any work — each accepted call costs a Stripe
   //    request, so an unauthenticated flood is a cost/DoS vector (H1).
@@ -196,24 +257,42 @@ export async function handleCreateSession(
     email: parsed.data.email,
   };
 
-  // 4. Idempotency: the key alone is not a capability — it must be paired with
-  //    a matching payload to return the cached session.
+  // 4. Idempotency with an atomic reservation (security review M1). The key
+  //    alone is not a capability — it must be paired with a matching payload.
+  //    Reserving via `setNx` BEFORE the Stripe call is what closes the TOCTOU
+  //    race: a concurrent retry sees the reservation and waits for the winner's
+  //    session instead of launching a second billable Stripe session.
   const payloadHash = hashPayload(input);
   if (clientRequestId !== null) {
-    const entry = await idempotency.get(clientRequestId);
-    if (entry) {
-      if (entry.payloadHash !== payloadHash) {
-        return errorResponse(
-          "invalid_request",
-          `${CLIENT_REQUEST_ID_HEADER} was already used with a different request`,
-          400,
+    try {
+      let entry = await idempotency.get(clientRequestId);
+      if (!entry) {
+        // No entry yet — try to win the reservation. If we lose a race that
+        // started after our read, re-read and resolve the winner's entry.
+        const won = await idempotency.reserve(clientRequestId, payloadHash);
+        if (!won) {
+          entry = await idempotency.get(clientRequestId);
+        }
+      }
+      if (entry) {
+        const resolved = await resolveExistingEntry(
+          entry,
+          clientRequestId,
+          payloadHash,
+          store,
+          idempotency,
+          sleep,
         );
+        if (resolved) return resolved;
       }
-      const existing = await store.get(entry.sessionId);
-      if (existing) {
-        return jsonResponse(toResponse(existing), 200);
-      }
-      // Dangling index (session evicted on restart): fall through to recreate.
+    } catch (err: unknown) {
+      // Fail-open (Decision 2): a KV blip on the idempotency path must never
+      // block a donor. Proceed to create — a duplicate session is the rare,
+      // tolerable cost of staying available here.
+      logger.warn(
+        { err },
+        "[onramp/session] idempotency check failed; proceeding (fail-open)",
+      );
     }
   }
 
@@ -232,13 +311,20 @@ export async function handleCreateSession(
     );
   }
 
-  // 6. Persist + index for idempotency (only after a confirmed success).
+  // 6. Persist + commit the idempotency entry (only after a confirmed success),
+  //    overwriting our reservation with the real session id for future retries.
   await store.put(session);
   if (clientRequestId !== null) {
-    await idempotency.set(clientRequestId, {
-      sessionId: session.id,
-      payloadHash,
-    });
+    try {
+      await idempotency.commit(clientRequestId, session.id, payloadHash);
+    } catch (err: unknown) {
+      // Fail-open: the session is created + persisted; a failed index write only
+      // weakens idempotency on a later retry, it never loses the donor's session.
+      logger.warn(
+        { err },
+        "[onramp/session] idempotency commit failed (fail-open)",
+      );
+    }
   }
 
   // 7. Return the narrow client contract.

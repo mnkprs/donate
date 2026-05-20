@@ -37,12 +37,23 @@ export interface OnrampWebhookEvent {
 }
 
 /**
- * Durable record of which `event.id`s have already been applied. Async so a
- * KV-backed implementation drops in unchanged; replays short-circuit on `has`.
+ * Durable record of which `event.id`s have already been applied. Claiming is
+ * atomic (Redis `SET … NX`) so concurrent duplicate deliveries — not just
+ * sequential replays — can never both pass the check and double-apply (the
+ * has()+add() TOCTOU). `release` undoes a claim when an apply fails so the
+ * route's 500 → Stripe retry can re-apply rather than no-op on a stale claim.
  */
 export interface ProcessedEventLog {
+  /** Read-only: has `eventId` already been claimed? */
   has(eventId: string): Promise<boolean>;
-  add(eventId: string): Promise<void>;
+  /**
+   * Atomically claim `eventId`. Returns `true` if THIS caller claimed it (first
+   * delivery → must process); `false` if it was already claimed (replay or a
+   * concurrent duplicate → caller no-ops).
+   */
+  claim(eventId: string): Promise<boolean>;
+  /** Release a prior claim so a retry can re-apply (used on mid-apply failure). */
+  release(eventId: string): Promise<void>;
 }
 
 export interface WebhookHandlerDeps {
@@ -68,8 +79,11 @@ export function createProcessedEventLog(
     async has(eventId) {
       return kv.has(EVENT_PREFIX + eventId);
     },
-    async add(eventId) {
-      await kv.set(EVENT_PREFIX + eventId, 1, ttlSeconds);
+    async claim(eventId) {
+      return kv.setNx(EVENT_PREFIX + eventId, 1, ttlSeconds);
+    },
+    async release(eventId) {
+      await kv.delete(EVENT_PREFIX + eventId);
     },
   };
 }
@@ -117,63 +131,70 @@ export async function applyOnrampSessionEvent(
 ): Promise<void> {
   const { store, processedEvents } = deps;
 
-  // Idempotency: a replayed event must not mutate state a second time.
-  if (await processedEvents.has(event.id)) {
+  // Atomically CLAIM this event.id before any work (Redis SET NX). A losing
+  // claim means the event is already handled (replay) or being handled
+  // concurrently — a no-op. This enforces idempotency AND closes the
+  // has()+add() TOCTOU under duplicate delivery. A KV failure here throws → the
+  // route returns 500 so Stripe retries (fail-closed: never drop a settlement).
+  if (!(await processedEvents.claim(event.id))) {
     return;
   }
 
-  // We only act on the onramp session topic; ignore anything else Stripe sends.
-  if (event.type !== ONRAMP_SESSION_UPDATED_EVENT) {
-    await processedEvents.add(event.id);
-    return;
+  try {
+    // We only act on the onramp session topic; ignore anything else Stripe
+    // sends. The claim stays — we never want to reprocess a foreign event type.
+    if (event.type !== ONRAMP_SESSION_UPDATED_EVENT) {
+      return;
+    }
+
+    const parsed = onrampSessionObjectSchema.safeParse(event.data.object);
+    if (!parsed.success) {
+      // Claim stays: a payload we can't parse now won't parse on a redelivery
+      // either, so short-circuit its retries rather than loop forever.
+      return;
+    }
+
+    const existing = await store.get(parsed.data.id);
+    if (!existing) {
+      // Not a session we minted (or it was evicted). RELEASE the claim so the
+      // event ends UNMARKED — we never fabricate a session from webhook data,
+      // and a later redelivery can still apply if a durable store comes to hold
+      // it. (The route answers 200 regardless, so Stripe treats it as acked.)
+      await processedEvents.release(event.id);
+      return;
+    }
+
+    // Terminal states are absorbing — a late/out-of-order event cannot revert
+    // them. Claim stays; there is nothing further to apply.
+    if (isTerminal(existing.status)) {
+      return;
+    }
+
+    const nextStatus = toDomainStatus(parsed.data.status);
+    const txId = parsed.data.transaction_details?.transaction_id;
+
+    // Settlement requires the on-chain tx hash. Stripe populates transaction_id
+    // at fulfillment_complete; if a delivery omits it, settling anyway would
+    // write a permanently hash-less terminal record (terminal is absorbing, so
+    // it could never be backfilled). Throw — the catch releases the claim and
+    // the route returns 500 so Stripe's retry (with the hash) re-applies.
+    if (nextStatus === "settled" && !txId) {
+      throw new Error(
+        `Onramp event ${event.id} reported settlement for ${parsed.data.id} without a transaction_id`,
+      );
+    }
+
+    // Build the patch in one expression — OnrampSession fields are readonly.
+    const patch: Partial<OnrampSession> =
+      nextStatus === "settled" && txId
+        ? { status: nextStatus, txHash: txId }
+        : { status: nextStatus };
+
+    await store.update(parsed.data.id, patch);
+  } catch (err: unknown) {
+    // Any failure mid-apply must NOT leave the event claimed, or the route's
+    // 500 → Stripe retry would no-op on the stale claim. Release, then rethrow.
+    await processedEvents.release(event.id);
+    throw err;
   }
-
-  const parsed = onrampSessionObjectSchema.safeParse(event.data.object);
-  if (!parsed.success) {
-    // Can't act on a payload we don't understand; mark processed so Stripe's
-    // retries of this exact event don't loop forever.
-    await processedEvents.add(event.id);
-    return;
-  }
-
-  const existing = await store.get(parsed.data.id);
-  if (!existing) {
-    // Not a session we minted (or it was evicted). Return without applying or
-    // fabricating anything from webhook data alone. We leave the event UNMARKED,
-    // but the route still answers 200, so Stripe treats it as acknowledged and
-    // will not redeliver — the event is effectively dropped, not retried. Not
-    // marking it simply avoids persisting a processed marker for a session we
-    // don't own (if reprocessing-on-redeliver were ever required, the route
-    // would have to return a non-2xx here instead).
-    return;
-  }
-
-  // Terminal states are absorbing — a late/out-of-order event cannot revert them.
-  if (isTerminal(existing.status)) {
-    await processedEvents.add(event.id);
-    return;
-  }
-
-  const nextStatus = toDomainStatus(parsed.data.status);
-  const txId = parsed.data.transaction_details?.transaction_id;
-
-  // Settlement requires the on-chain tx hash. Stripe populates transaction_id
-  // at fulfillment_complete; if a delivery omits it, settling anyway would write
-  // a permanently hash-less terminal record (terminal states are absorbing, so
-  // it could never be backfilled). Throw instead — the route turns this into a
-  // 500 so Stripe retries, and event.id stays unmarked so the retry can apply.
-  if (nextStatus === "settled" && !txId) {
-    throw new Error(
-      `Onramp event ${event.id} reported settlement for ${parsed.data.id} without a transaction_id`,
-    );
-  }
-
-  // Build the patch in one expression — OnrampSession fields are readonly.
-  const patch: Partial<OnrampSession> =
-    nextStatus === "settled" && txId
-      ? { status: nextStatus, txHash: txId }
-      : { status: nextStatus };
-
-  await store.update(parsed.data.id, patch);
-  await processedEvents.add(event.id);
 }

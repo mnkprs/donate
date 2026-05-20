@@ -178,6 +178,46 @@ describe("applyOnrampSessionEvent()", () => {
     updateSpy.mockRestore();
   });
 
+  it("processes a duplicated event.id at most once under concurrency (atomic SET NX claim)", async () => {
+    // Two deliveries of the SAME event arriving together must not both mutate
+    // the store. A non-atomic has()+add() lets both pass the check; an atomic
+    // claim (SET NX) lets exactly one win.
+    const updateSpy = vi.spyOn(store, "update");
+    const event = updatedEvent("fulfillment_processing", { id: "evt_concurrent" });
+
+    await Promise.all([
+      applyOnrampSessionEvent(event, deps()),
+      applyOnrampSessionEvent(event, deps()),
+    ]);
+
+    expect((await store.get(CREATED_SESSION.id))?.status).toBe("pending");
+    expect(updateSpy).toHaveBeenCalledTimes(1);
+    updateSpy.mockRestore();
+  });
+
+  it("releases the claim on a throw so a retry re-applies (settlement w/o hash, then with)", async () => {
+    // First delivery lacks the tx hash → throws and must NOT stay claimed.
+    await expect(
+      applyOnrampSessionEvent(
+        updatedEvent("fulfillment_complete", { id: "evt_retry" }),
+        deps(),
+      ),
+    ).rejects.toThrow();
+    expect(await processedEvents.has("evt_retry")).toBe(false);
+
+    // Stripe's retry of the SAME event.id now carries the hash → must settle.
+    await applyOnrampSessionEvent(
+      updatedEvent("fulfillment_complete", {
+        id: "evt_retry",
+        transactionId: "0xlate",
+      }),
+      deps(),
+    );
+    const session = await store.get(CREATED_SESSION.id);
+    expect(session?.status).toBe("settled");
+    expect(session?.txHash).toBe("0xlate");
+  });
+
   it("refuses to settle (throws, leaves session recoverable) when fulfillment_complete lacks a tx hash", async () => {
     // Stripe populates transaction_id at fulfillment_complete; if a delivery
     // omits it, settling anyway would write a permanently hash-less terminal

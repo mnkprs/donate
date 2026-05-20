@@ -97,6 +97,31 @@ describe("createInMemoryKvStore()", () => {
     expect(await kv.get("c")).toBeNull(); // window closed despite later hit
   });
 
+  it("setNx() writes and returns true when the key is absent", async () => {
+    const kv = createInMemoryKvStore();
+    expect(await kv.setNx("k", { v: 1 })).toBe(true);
+    expect(await kv.get<{ v: number }>("k")).toEqual({ v: 1 });
+  });
+
+  it("setNx() returns false and does NOT overwrite when the key is present", async () => {
+    const kv = createInMemoryKvStore();
+    await kv.set("k", "winner");
+    expect(await kv.setNx("k", "loser")).toBe(false);
+    expect(await kv.get("k")).toBe("winner");
+  });
+
+  it("setNx() arms the TTL so the reservation can expire", async () => {
+    const clock = fakeClock();
+    const kv = createInMemoryKvStore({ now: clock.now });
+
+    expect(await kv.setNx("k", "v", 10)).toBe(true);
+    clock.advance(10_000); // window closes
+    expect(await kv.get("k")).toBeNull();
+    // Once expired, a fresh setNx wins again (crashed-winner recovery).
+    expect(await kv.setNx("k", "v2", 10)).toBe(true);
+    expect(await kv.get("k")).toBe("v2");
+  });
+
   it("reset() clears all entries", async () => {
     const kv = createInMemoryKvStore();
     await kv.set("a", 1);

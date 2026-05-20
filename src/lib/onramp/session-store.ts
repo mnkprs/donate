@@ -71,11 +71,24 @@ export function createSessionStore(
   };
 }
 
-/** What the idempotency index stores per key: the session id + a payload fingerprint. */
-export interface IdempotencyEntry {
-  readonly sessionId: string;
-  readonly payloadHash: string;
-}
+/**
+ * What the idempotency index stores per key, as a discriminated union over the
+ * two-phase lifecycle that closes the TOCTOU race (security review M1):
+ *
+ *  - `reserved`  — a create is in-flight. Written atomically via `setNx` BEFORE
+ *    the Stripe call so a concurrent retry sees the reservation and waits rather
+ *    than launching a second billable session. Carries only the payload hash
+ *    (no session id exists yet), so a mismatched-payload reuse is still a 400.
+ *  - `committed` — the create finished; `sessionId` is the session to return on
+ *    any future retry carrying the same key + payload.
+ */
+export type IdempotencyEntry =
+  | { readonly state: "reserved"; readonly payloadHash: string }
+  | {
+      readonly state: "committed";
+      readonly sessionId: string;
+      readonly payloadHash: string;
+    };
 
 /**
  * Maps a client-supplied request id → the session it created. Async + durable so
@@ -83,25 +96,67 @@ export interface IdempotencyEntry {
  * (security review M2), preventing a second billable Stripe session.
  */
 export interface IdempotencyIndex {
+  /** Read the current entry (reserved or committed), or undefined if absent. */
   get(key: string): Promise<IdempotencyEntry | undefined>;
-  set(key: string, entry: IdempotencyEntry): Promise<void>;
+  /**
+   * Atomically reserve `key` for an in-flight create (Redis `SET … NX`, short
+   * TTL). Returns `true` if this caller WON (no entry existed) and must proceed
+   * to create + commit; `false` if an entry already exists (a concurrent create
+   * is in-flight, or one already committed) — the caller then re-reads via
+   * `get()` and either returns the winner's session or rejects a payload clash.
+   */
+  reserve(key: string, payloadHash: string): Promise<boolean>;
+  /** Overwrite the reservation with the committed session id (long TTL). */
+  commit(key: string, sessionId: string, payloadHash: string): Promise<void>;
 }
 
 /** Key namespace for idempotency entries within a (possibly shared) KvStore. */
 const IDEMPOTENCY_PREFIX = "idem:";
 
-/** Build an IdempotencyIndex over any KvStore; entries expire with the session. */
+/**
+ * How long a RESERVATION lives. Deliberately short: it only needs to outlast the
+ * worst-case Stripe round-trip. If a winner crashes between `reserve` and
+ * `commit`, the reservation self-heals after this window so retries are not
+ * wedged for the full committed TTL (they fall through and recreate).
+ */
+export const IDEMPOTENCY_RESERVATION_TTL_SECONDS = 60;
+
+/**
+ * How long a COMMITTED entry lives (security review M1: ~24h). Long enough that a
+ * donor's reasonable retry still hits the same session; bounded so the index
+ * cannot grow without limit.
+ */
+export const IDEMPOTENCY_COMMITTED_TTL_SECONDS = 24 * 60 * 60;
+
+/** Build an IdempotencyIndex over any KvStore with split reserve/commit TTLs. */
 export function createIdempotencyIndex(
   kv: KvStore,
-  ttlSeconds: number = SESSION_TTL_SECONDS,
+  ttls: {
+    readonly reservationSeconds?: number;
+    readonly committedSeconds?: number;
+  } = {},
 ): IdempotencyIndex {
+  const reservationTtl =
+    ttls.reservationSeconds ?? IDEMPOTENCY_RESERVATION_TTL_SECONDS;
+  const committedTtl =
+    ttls.committedSeconds ?? IDEMPOTENCY_COMMITTED_TTL_SECONDS;
+
   return {
     async get(key) {
       const found = await kv.get<IdempotencyEntry>(IDEMPOTENCY_PREFIX + key);
       return found ?? undefined;
     },
-    async set(key, entry) {
-      await kv.set(IDEMPOTENCY_PREFIX + key, entry, ttlSeconds);
+    async reserve(key, payloadHash) {
+      const entry: IdempotencyEntry = { state: "reserved", payloadHash };
+      return kv.setNx(IDEMPOTENCY_PREFIX + key, entry, reservationTtl);
+    },
+    async commit(key, sessionId, payloadHash) {
+      const entry: IdempotencyEntry = {
+        state: "committed",
+        sessionId,
+        payloadHash,
+      };
+      await kv.set(IDEMPOTENCY_PREFIX + key, entry, committedTtl);
     },
   };
 }

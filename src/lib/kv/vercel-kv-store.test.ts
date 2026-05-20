@@ -13,8 +13,14 @@ function fakeClient(): VercelKvClient & { store: Map<string, unknown> } {
     async get<T>(key: string): Promise<T | null> {
       return (store.get(key) as T) ?? null;
     },
-    async set(key, value) {
+    async set(key, value, opts) {
+      // Mirror Upstash semantics: with { nx: true } the write is rejected when
+      // the key already exists, signalled by a null reply (vs "OK" on success).
+      if (opts?.nx && store.has(key)) {
+        return null;
+      }
       store.set(key, value);
+      return "OK";
     },
     async exists(key) {
       return store.has(key) ? 1 : 0;
@@ -105,5 +111,31 @@ describe("createVercelKvStore()", () => {
     await kv.increment("c");
 
     expect(expireSpy).not.toHaveBeenCalled();
+  });
+
+  it("setNx() sets with { nx: true, ex } and returns true on the 'OK' reply", async () => {
+    const client = fakeClient();
+    const setSpy = vi.spyOn(client, "set");
+    const kv = createVercelKvStore(client);
+
+    expect(await kv.setNx("k", "v", 60)).toBe(true);
+    expect(setSpy).toHaveBeenCalledWith("k", "v", { nx: true, ex: 60 });
+  });
+
+  it("setNx() returns false when the key already exists (null reply)", async () => {
+    const kv = createVercelKvStore(fakeClient());
+    expect(await kv.setNx("k", "winner", 60)).toBe(true);
+    expect(await kv.setNx("k", "loser", 60)).toBe(false);
+    expect(await kv.get("k")).toBe("winner");
+  });
+
+  it("setNx() omits ex when no TTL is given (still nx)", async () => {
+    const client = fakeClient();
+    const setSpy = vi.spyOn(client, "set");
+    const kv = createVercelKvStore(client);
+
+    await kv.setNx("k", "v");
+
+    expect(setSpy).toHaveBeenCalledWith("k", "v", { nx: true });
   });
 });

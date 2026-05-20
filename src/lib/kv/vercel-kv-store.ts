@@ -19,7 +19,11 @@ import type { KvStore } from "@/lib/kv/kv-store";
 /** The subset of the `@vercel/kv` client surface this adapter depends on. */
 export interface VercelKvClient {
   get<T>(key: string): Promise<T | null>;
-  set(key: string, value: unknown, opts?: { ex?: number }): Promise<unknown>;
+  set(
+    key: string,
+    value: unknown,
+    opts?: { ex?: number; nx?: boolean },
+  ): Promise<unknown>;
   exists(key: string): Promise<number>;
   del(key: string): Promise<unknown>;
   incr(key: string): Promise<number>;
@@ -38,6 +42,15 @@ export function createVercelKvStore(client: VercelKvClient): KvStore {
         value,
         ttlSeconds !== undefined ? { ex: ttlSeconds } : undefined,
       );
+    },
+
+    async setNx<T>(key: string, value: T, ttlSeconds?: number): Promise<boolean> {
+      // Upstash returns "OK" when the NX write lands and null when the key
+      // already exists; a non-null reply means we won the reservation.
+      const opts =
+        ttlSeconds !== undefined ? { nx: true, ex: ttlSeconds } : { nx: true };
+      const result = await client.set(key, value, opts);
+      return result !== null;
     },
 
     async has(key: string): Promise<boolean> {
