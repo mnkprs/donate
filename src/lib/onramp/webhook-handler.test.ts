@@ -172,6 +172,20 @@ describe("applyOnrampSessionEvent()", () => {
     updateSpy.mockRestore();
   });
 
+  it("refuses to settle (throws, leaves session recoverable) when fulfillment_complete lacks a tx hash", () => {
+    // Stripe populates transaction_id at fulfillment_complete; if a delivery
+    // omits it, settling anyway would write a permanently hash-less terminal
+    // record. Throw instead → route 500 → Stripe retries with the hash.
+    const event = updatedEvent("fulfillment_complete", { id: "evt_no_hash" });
+
+    expect(() => applyOnrampSessionEvent(event, deps())).toThrow();
+
+    // Session is NOT settled, and the event is NOT marked processed, so a retry
+    // carrying the hash can still apply.
+    expect(store.get(CREATED_SESSION.id)?.status).toBe("created");
+    expect(processedEvents.has("evt_no_hash")).toBe(false);
+  });
+
   it("applies events out of order: fulfillment_complete with no prior pending still settles", () => {
     // No intermediate "pending" event was ever delivered.
     applyOnrampSessionEvent(

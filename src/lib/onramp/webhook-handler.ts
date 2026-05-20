@@ -124,8 +124,18 @@ export function applyOnrampSessionEvent(
   const nextStatus = toDomainStatus(parsed.data.status);
   const txId = parsed.data.transaction_details?.transaction_id;
 
-  // Build the patch in one expression — OnrampSession fields are readonly, and
-  // the tx hash only exists once Stripe reports settlement.
+  // Settlement requires the on-chain tx hash. Stripe populates transaction_id
+  // at fulfillment_complete; if a delivery omits it, settling anyway would write
+  // a permanently hash-less terminal record (terminal states are absorbing, so
+  // it could never be backfilled). Throw instead — the route turns this into a
+  // 500 so Stripe retries, and event.id stays unmarked so the retry can apply.
+  if (nextStatus === "settled" && !txId) {
+    throw new Error(
+      `Onramp event ${event.id} reported settlement for ${parsed.data.id} without a transaction_id`,
+    );
+  }
+
+  // Build the patch in one expression — OnrampSession fields are readonly.
   const patch: Partial<OnrampSession> =
     nextStatus === "settled" && txId
       ? { status: nextStatus, txHash: txId }
