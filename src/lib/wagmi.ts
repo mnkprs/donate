@@ -17,3 +17,11 @@ declare module "wagmi" {
     config: typeof config;
   }
 }
+
+// Router contract surface (Epic 4). Re-exported here so consumers reach the
+// wagmi config and the on-chain router address through one module.
+export {
+  DONATION_ROUTED_EVENT,
+  ROUTER_SUPPORTED_CHAIN_IDS,
+  getRouterAddress,
+} from "./contracts";

@@ -27,14 +27,19 @@ describe("DONATION_ROUTED_EVENT", () => {
     expect(DONATION_ROUTED_EVENT.type).toBe("event");
     expect(DONATION_ROUTED_EVENT.name).toBe("DonationRouted");
 
-    const byName = Object.fromEntries(
-      DONATION_ROUTED_EVENT.inputs.map((i) => [i.name, i]),
+    // Non-indexed inputs omit the `indexed` key entirely in viem's literal
+    // type, so narrow with `in` before reading it.
+    const indexedByName = new Map(
+      DONATION_ROUTED_EVENT.inputs.map((i) => [
+        i.name,
+        "indexed" in i && i.indexed === true,
+      ]),
     );
-    expect(byName.donor?.indexed).toBe(true);
-    expect(byName.org?.indexed).toBe(true);
-    expect(byName.gross?.indexed ?? false).toBe(false);
-    expect(byName.fee?.indexed ?? false).toBe(false);
-    expect(byName.net?.indexed ?? false).toBe(false);
+    expect(indexedByName.get("donor")).toBe(true);
+    expect(indexedByName.get("org")).toBe(true);
+    expect(indexedByName.get("gross")).toBe(false);
+    expect(indexedByName.get("fee")).toBe(false);
+    expect(indexedByName.get("net")).toBe(false);
   });
 });
 
