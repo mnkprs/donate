@@ -191,23 +191,34 @@ contract TransparentDonationRouterTest is Test {
     }
 
     /// @notice With funds but no approval, the `safeTransferFrom` pull reverts.
-    ///         OZ's ERC20 surfaces `ERC20InsufficientAllowance`; `expectRevert`
-    ///         matches the selector regardless of its args.
+    ///         OZ surfaces `ERC20InsufficientAllowance(spender, allowance, needed)`
+    ///         where the spender is the router pulling on the donor's behalf. The
+    ///         full error is encoded because `expectRevert(bytes4)` only matches a
+    ///         bare 4-byte revert, not a parameterized custom error.
     function test_Donate_RevertsWhenNoAllowance() public {
         token.mint(donor, DONATION); // funded but NOT approved
 
-        vm.expectRevert(IERC20Errors.ERC20InsufficientAllowance.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, address(router), 0, DONATION
+            )
+        );
         vm.prank(donor);
         router.donate(address(org), DONATION);
     }
 
     /// @notice With approval but no balance, the pull reverts on
-    ///         `ERC20InsufficientBalance`.
+    ///         `ERC20InsufficientBalance(sender, balance, needed)` — the donor
+    ///         holds zero USDC.
     function test_Donate_RevertsWhenInsufficientBalance() public {
         vm.prank(donor); // approved the router, but donor holds zero USDC
         token.approve(address(router), DONATION);
 
-        vm.expectRevert(IERC20Errors.ERC20InsufficientBalance.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientBalance.selector, donor, 0, DONATION
+            )
+        );
         vm.prank(donor);
         router.donate(address(org), DONATION);
     }
