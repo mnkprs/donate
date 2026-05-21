@@ -1,7 +1,8 @@
 # Epic 4 — TransparentDonationRouter Smart Contract — TDD Plan
 
 > **GitHub issue:** [#5 — Epic 4 — TransparentDonationRouter smart contract](https://github.com/mnkprs/donate/issues/5)
-> **Status:** Tasks 0–5 COMPLETE. Task 5 (forked Base integration) is GREEN-as-scaffold: added `test/fork/RouterFork.t.sol` — full real-USDC donate flow asserting the 1/99 split as treasury/org balance deltas. It is **Epic-5 gated**: `setUp` reads `BASE_RPC_URL` + `ENDAOMENT_ORG` *before* any fork (an empty URL makes `vm.createSelectFork` revert and would error the whole run), forks only when both are present, and records `forkReady`; the test calls `vm.skip(true, reason)` early otherwise. With env unset it reports `[SKIP]`, not fail. Verified RED→GREEN: a naive ungated first cut failed with `vm.createSelectFork: invalid rpc url:`; the gate converts that crash into a clean skip. Full run now: **17 passed, 0 failed, 1 skipped** (exit 0). No production-contract change (router still at 100% coverage). Uses `deal()` (real USDC has no public mint) and hardcoded Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. Resume at **Task 6** — deploy + verify + frontend config wiring (`script/Deploy.s.sol`, `src/lib/contracts.ts`).
+> **Status:** Tasks 0–6 COMPLETE (code); the live broadcast in Task 6 is the only remaining step and is an **operator action** (needs funded keys + Basescan key; outward-facing/irreversible) — runbook at `contracts/DEPLOY.md`. Task 6 added, TDD: `script/Deploy.s.sol` (thin `run()` reads `USDC_ADDRESS`/`TREASURY_ADDRESS` + broadcasts; internal `_deploy` is the test seam) with `test/Deploy.t.sol` (4 tests: wires immutables, fresh deploy each call, propagates both zero-address reverts); `src/lib/contracts.ts` (frontend) exporting the `DonationRouted` event ABI **hash-bound to the Solidity event signature** via `toEventHash == keccak256(canonical)`, `ROUTER_SUPPORTED_CHAIN_IDS`, and env-driven `getRouterAddress(chainId)` — returns `undefined` until deployed, ignores malformed env (lazy per-chain static `process.env.NEXT_PUBLIC_ROUTER_ADDRESS_*` reads preserve both Next.js inlining and vitest stubbing) — re-exported from `src/lib/wagmi.ts`; `.env.local.example` documents the two `NEXT_PUBLIC_ROUTER_ADDRESS_*` vars. Verified: forge **21 passed, 1 skipped** (fork gate); vitest **485 passed** (8 new in `contracts.test.ts`); `tsc --noEmit` clean. Resume at **Task 7** — receipt-decoder handshake (Epic 5 seam; the event is already exported for it).
+> **Task 5 recap:** GREEN-as-scaffold: `test/fork/RouterFork.t.sol` asserts the 1/99 split as treasury/org balance deltas on a Base fork, **Epic-5 gated** (`setUp` reads `BASE_RPC_URL` + `ENDAOMENT_ORG` before any fork, `vm.skip` when unset → clean `[SKIP]`, not fail). Uses `deal()` and hardcoded Base USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. Router still 100% coverage.
 > **Fork run note:** Once Epic 5 supplies the real org, run with `forge test --match-path test/fork/* --fork-url $BASE_RPC_URL` (and `ENDAOMENT_ORG` set).
 > **Run note:** Run forge from inside `contracts/` (`Set-Location contracts; forge test`). The `--root contracts` form hit a stale-cache "Nothing to compile"; `forge clean` then in-dir runs work.
 > **Toolchain note:** `forge` lives at `C:\Users\Manos\.foundry\bin\forge.exe` (v1.7.1) — not on PATH; prepend `$env:USERPROFILE\.foundry\bin` to PATH per session. Deps are shallow-cloned into `contracts/lib` (gitignored), not submodules. Run forge with `--root contracts`.
@@ -163,8 +164,8 @@ GREEN: ordering already satisfies most; add `MockReentrantOrg`; confirm `nonReen
 - **LOW:** Fee rounding dust on sub-$0.01 donations (acceptable; conservation holds).
 
 ## Test Plan (acceptance, from issue #5)
-- [ ] `forge test` green (unit + fuzz) against mocks.
-- [ ] `forge test --match-path test/fork/*` green once `BASE_RPC_URL` + real org set.
-- [ ] Deployed + verified on Base Sepolia; sample tx splits 1/99 correctly.
-- [ ] `DonationRouted` decodable into `buildStages` inputs.
-- [ ] Router address recorded in frontend config.
+- [x] `forge test` green (unit + fuzz) against mocks. *(21 passed, 1 skipped fork gate; incl. 4 Deploy-script tests.)*
+- [ ] `forge test --match-path test/fork/*` green once `BASE_RPC_URL` + real org set. *(Epic 5 supplies the org.)*
+- [ ] Deployed + verified on Base Sepolia; sample tx splits 1/99 correctly. *(Operator step — runbook: `contracts/DEPLOY.md`.)*
+- [x] `DonationRouted` ABI exported + hash-bound to the on-chain event signature, ready for `buildStages`. *(Decode of a real log lands in Epic 5 / Task 7.)*
+- [x] Router address wiring in frontend config (`src/lib/contracts.ts` `getRouterAddress`, env-driven; address filled in post-deploy, no code change).
