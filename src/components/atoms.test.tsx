@@ -27,9 +27,9 @@ describe("brand atoms", () => {
     expect(html).toContain("#abcdef");
   });
 
-  test("Wordmark renders the Philotimo word alongside the mark", () => {
+  test("Wordmark renders the Eudaimonia word alongside the mark", () => {
     const html = renderToString(<Wordmark />);
-    expect(html).toContain("Philotimo");
+    expect(html).toContain("Eudaimonia");
     expect(html).toContain("<svg");
   });
 });

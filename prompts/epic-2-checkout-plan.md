@@ -85,7 +85,7 @@ Each phase: RED (write tests, run, watch them fail) → GREEN (minimal impl) →
 **Why first:** The fee math is the highest-risk business logic. Lock it down in pure modules where the TDD loop is fastest.
 
 1. `src/types/checkout.ts` — `FeeBreakdown`, `ValidationResult<T>`, `CheckoutPayload`.
-2. **RED** `src/lib/checkout/fees.test.ts` — assertions for: gross $25 → 1% Philotimo + Endaoment overhead + card-processing rows, net charity amount; edge cases (gross $0 returns zero rows or empty; rounding to cents; very large amount). Source the row labels and constants from the design (`designs/checkout.jsx` `OrderSummary`).
+2. **RED** `src/lib/checkout/fees.test.ts` — assertions for: gross $25 → 1% Eudaimonia + Endaoment overhead + card-processing rows, net charity amount; edge cases (gross $0 returns zero rows or empty; rounding to cents; very large amount). Source the row labels and constants from the design (`designs/checkout.jsx` `OrderSummary`).
 3. **GREEN** `src/lib/checkout/fees.ts` — `calculateBreakdown(grossCents: number): FeeBreakdown` returning typed rows for rendering.
 4. **RED** `src/lib/checkout/validation.test.ts` — amount: < $1 fails, > $10,000 fails (locked-in min/max, configurable), non-numeric fails, valid passes; email: missing fails, malformed fails, valid passes.
 5. **GREEN** `src/lib/checkout/validation.ts` — `validateAmount`, `validateEmail`.
@@ -145,7 +145,7 @@ For each atom: **RED** `.test.tsx` first, asserting:
 - Renders "Net to charity" emphasized row.
 - When `state === "submitting"` → renders skeleton variant with `aria-busy="true"` and `animate-pulse` (mirrors landing card pattern).
 - When `grossCents === 0` → empty/instructional state, not zero rows ("Enter an amount to see the breakdown").
-- Visually conveys the 1% Philotimo fee transparently (assert label text "Philotimo platform fee" is present alongside the row value).
+- Visually conveys the 1% Eudaimonia fee transparently (assert label text "Eudaimonia platform fee" is present alongside the row value).
 
 **GREEN** `OrderSummary.tsx` accepting `{ breakdown, state }`.
 
@@ -241,7 +241,7 @@ The stub `onSubmit` lives in `src/lib/checkout/stubSubmit.ts` (client-safe, thro
 
 ## Risks
 
-- **HIGH** — Fee math semantics not yet locked by product. The design's row labels (Philotimo 1%, Endaoment overhead, card processing) are illustrative; the exact percentages need to be locked in `fees.ts` constants and reviewed by Epic 4 (router fee) and Epic 3 (processor fee) owners. Mitigation: keep the percentages in a single named-constants block, well-commented, and easy to amend.
+- **HIGH** — Fee math semantics not yet locked by product. The design's row labels (Eudaimonia 1%, Endaoment overhead, card processing) are illustrative; the exact percentages need to be locked in `fees.ts` constants and reviewed by Epic 4 (router fee) and Epic 3 (processor fee) owners. Mitigation: keep the percentages in a single named-constants block, well-commented, and easy to amend.
 - **MEDIUM** — Submit handoff lands as a stub. If reviewers expect a working flow they'll be confused. Mitigation: PR description explicitly notes the dependency on Epic 3 and the stub's typed contract.
 - **MEDIUM** — Client/server boundary. `notFound()` is server-only; `useState` is client-only. The plan splits them correctly, but inadvertently mixing them is a frequent regression source. Mitigation: `"use client"` directive in `CheckoutForm.tsx` only; all other files are server-default.
 - **LOW** — Inline-style residue from the design file. Mitigation: grep gate in Phase 10 + documented exception for the campaign gradient swatch.

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Philotimo — Give once. See exactly where it goes.</title>
+  <title>Eudaimonia — Give once. See exactly where it goes.</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -43,7 +43,7 @@
       const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
       return (
         <React.Fragment>
-          <PhilotimoLanding
+          <EudaimoniaLanding
             heroCopy={t.heroCopy}
             campaignLayout={t.campaignLayout}
             showLiveStrip={t.showLiveStrip}
@@ -90,7 +90,7 @@
     }
 
     function boot() {
-      if (typeof PhilotimoLanding === 'undefined' || typeof TweaksPanel === 'undefined') {
+      if (typeof EudaimoniaLanding === 'undefined' || typeof TweaksPanel === 'undefined') {
         setTimeout(boot, 30);
         return;
       }

@@ -148,7 +148,7 @@ function FeeStrip({ data }: FeeStripProps) {
         <FeeCell label="Network fee" value={`$${data.donorFee} (sponsored)`} />
         <FeeCell label="Endaoment fee" value={`$${data.endaomentFee} (1.5%)`} />
         <FeeCell
-          label="Philotimo fee"
+          label="Eudaimonia fee"
           value={platformFeeIsZero ? "not active" : `$${data.platformFee} (1%)`}
         />
         <span

@@ -5,7 +5,7 @@
 Epic 3 (GitHub issue #4) wires the donor's fiat checkout (Epic 2) to Endaoment's
 on-chain destination via a fiat-to-crypto on-ramp. The user enters card details
 in Epic 2's `CheckoutForm`; Epic 3 turns that intent into a USDC settlement on
-Base addressed to the Philotimo router contract (Epic 4), which deducts the 1%
+Base addressed to the Eudaimonia router contract (Epic 4), which deducts the 1%
 platform fee and forwards the remainder to Endaoment.
 
 This PR ships the **backend pipeline only**: on-ramp session creation, webhook

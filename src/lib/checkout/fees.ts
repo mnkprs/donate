@@ -1,9 +1,9 @@
 /**
- * Fee math for the Philotimo checkout flow. All inputs and outputs are integer
+ * Fee math for the Eudaimonia checkout flow. All inputs and outputs are integer
  * cents to keep this layer free of floating-point drift.
  *
  * The percentages below are the contract for Epic 2 only. Epic 3 (on-ramp,
- * card processor) and Epic 4 (Philotimo router contract) will negotiate the
+ * card processor) and Epic 4 (Eudaimonia router contract) will negotiate the
  * final percentages; this single constants block is the only place to amend
  * them.
  *
@@ -12,8 +12,8 @@
 
 import type { FeeBreakdown, FeeRow } from "@/types/checkout";
 
-/** Philotimo platform fee, in basis points (1 bp = 0.01%). 100 bps = 1.00%. */
-export const PHILOTIMO_FEE_BPS = 100;
+/** Eudaimonia platform fee, in basis points (1 bp = 0.01%). 100 bps = 1.00%. */
+export const EUDAIMONIA_FEE_BPS = 100;
 
 /** Endaoment infrastructure fee, in basis points. 150 bps = 1.50%. */
 export const ENDAOMENT_FEE_BPS = 150;
@@ -38,7 +38,7 @@ const EMPTY_BREAKDOWN: FeeBreakdown = {
   grossCents: 0,
   rows: [],
   netToCharityCents: 0,
-  philotimoFeeCents: 0,
+  eudaimoniaFeeCents: 0,
   endaomentFeeCents: 0,
   cardProcessingFeeCents: 0,
 };
@@ -61,12 +61,12 @@ export function calculateBreakdown(grossCents: number): FeeBreakdown {
     return EMPTY_BREAKDOWN;
   }
 
-  const philotimoFeeCents = applyBps(grossCents, PHILOTIMO_FEE_BPS);
+  const eudaimoniaFeeCents = applyBps(grossCents, EUDAIMONIA_FEE_BPS);
   const endaomentFeeCents = applyBps(grossCents, ENDAOMENT_FEE_BPS);
   const cardProcessingFeeCents =
     applyBps(grossCents, CARD_PROCESSING_BPS) + CARD_PROCESSING_FLAT_CENTS;
   const netToCharityCents = clampNonNegative(
-    grossCents - philotimoFeeCents - endaomentFeeCents,
+    grossCents - eudaimoniaFeeCents - endaomentFeeCents,
   );
 
   const rows: readonly FeeRow[] = [
@@ -77,10 +77,10 @@ export function calculateBreakdown(grossCents: number): FeeBreakdown {
       amountCents: grossCents,
     },
     {
-      kind: "philotimo",
-      label: "Philotimo routing fee",
+      kind: "eudaimonia",
+      label: "Eudaimonia routing fee",
       sub: "1.00% · taken on-chain, visible in receipt",
-      amountCents: philotimoFeeCents,
+      amountCents: eudaimoniaFeeCents,
       muted: true,
     },
     {
@@ -110,7 +110,7 @@ export function calculateBreakdown(grossCents: number): FeeBreakdown {
     grossCents,
     rows,
     netToCharityCents,
-    philotimoFeeCents,
+    eudaimoniaFeeCents,
     endaomentFeeCents,
     cardProcessingFeeCents,
   };

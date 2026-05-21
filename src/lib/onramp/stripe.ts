@@ -26,7 +26,7 @@ const STRIPE_TIMEOUT_MS = 10_000;
 /** Cap how much of Stripe's error body we echo into a thrown message. */
 const ERROR_BODY_MAX_CHARS = 300;
 
-/** Only the fields Philotimo depends on; Stripe sends many more. */
+/** Only the fields Eudaimonia depends on; Stripe sends many more. */
 const stripeOnrampResponseSchema = z.object({
   id: z.string().min(1),
   client_secret: z.string().min(1),

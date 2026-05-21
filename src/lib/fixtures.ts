@@ -80,7 +80,7 @@ export const RECEIPT_BUNDLE_FIXTURE: ReceiptBundle = {
     },
     {
       n: 4,
-      title: "Philotimo fee",
+      title: "Eudaimonia fee",
       short: "Future stage · not active for this tx",
       timestamp: "—",
       relative: "inactive",
@@ -89,8 +89,8 @@ export const RECEIPT_BUNDLE_FIXTURE: ReceiptBundle = {
       address: "Not yet deployed",
       addressLabel: "Status",
       detail:
-        "Future Philotimo donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Philotimo fee was charged.",
-      contract: "Philotimo · Treasury (future)",
+        "Future Eudaimonia donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.",
+      contract: "Eudaimonia · Treasury (future)",
       inactive: true,
     },
     {

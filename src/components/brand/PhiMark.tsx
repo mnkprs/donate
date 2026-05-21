@@ -6,7 +6,7 @@ interface PhiMarkProps {
 }
 
 /**
- * Philotimo monogram — stylized φ inside a thin circle, hand-set to feel
+ * Eudaimonia monogram — stylized φ inside a thin circle, hand-set to feel
  * like a wall-label monogram rather than a logo lockup.
  */
 export function PhiMark({ size = 22, color = colors.ink }: PhiMarkProps) {

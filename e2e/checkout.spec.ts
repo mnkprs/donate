@@ -36,7 +36,7 @@ test.describe(`${CHECKOUT_URL} checkout flow`, () => {
       /Enter an amount to see the breakdown/i,
     );
     await expect(summary).toContainText(/Net to charity/i);
-    await expect(summary).toContainText(/Philotimo routing fee/i);
+    await expect(summary).toContainText(/Eudaimonia routing fee/i);
     // Net row carries a tabular-numeral dollar amount; assert the format only.
     await expect(summary).toContainText(/\$\d+\.\d{2}/);
   });

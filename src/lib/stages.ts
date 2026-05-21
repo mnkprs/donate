@@ -45,8 +45,8 @@ export interface BuildStagesInput {
     timestamp: string;
     relativeSeconds: number;
   };
-  /** True only when a Philotimo platform fee was actually taken on-chain. */
-  philotimoFeeActive: boolean;
+  /** True only when a Eudaimonia platform fee was actually taken on-chain. */
+  eudaimoniaFeeActive: boolean;
 }
 
 const formatRelative = (seconds: number): string => `+${seconds}s`;
@@ -60,17 +60,17 @@ const buildSwapDetail = (rate: string): string =>
 const routingDetail = (endaomentFeeAmount: string): string =>
   `OrgFundFactory routes donations to the recipient charity’s Endaoment fund based on its EIN. Endaoment’s 1.5% fee ($${endaomentFeeAmount}) is taken on-chain at this step.`;
 
-const philotimoFutureDetail =
-  "Future Philotimo donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Philotimo fee was charged.";
+const eudaimoniaFutureDetail =
+  "Future Eudaimonia donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.";
 
-const philotimoActiveDetail =
-  "Philotimo charges a 1% platform fee, taken on-chain in the same tx that routes the donation to Endaoment.";
+const eudaimoniaActiveDetail =
+  "Eudaimonia charges a 1% platform fee, taken on-chain in the same tx that routes the donation to Endaoment.";
 
 const buildSettledDetail = (confirmations: string): string =>
   `${confirmations} confirmations. Final. The funds are spendable by the charity’s multisig.`;
 
 export function buildStages(input: BuildStagesInput): Stage[] {
-  const { donor, swap, routing, settlement, philotimoFeeActive } = input;
+  const { donor, swap, routing, settlement, eudaimoniaFeeActive } = input;
 
   const donated: Stage = {
     n: 1,
@@ -119,23 +119,23 @@ export function buildStages(input: BuildStagesInput): Stage[] {
     },
   };
 
-  const philotimoFee: Stage = philotimoFeeActive
+  const eudaimoniaFee: Stage = eudaimoniaFeeActive
     ? {
         n: 4,
-        title: "Philotimo fee",
+        title: "Eudaimonia fee",
         short: "1% platform fee taken on-chain",
         timestamp: routing.timestamp,
         relative: formatRelative(routing.relativeSeconds),
         amount: "0.01",
         unit: "USDC",
-        address: "Philotimo Treasury",
+        address: "Eudaimonia Treasury",
         addressLabel: "Treasury",
-        detail: philotimoActiveDetail,
-        contract: "Philotimo · Treasury",
+        detail: eudaimoniaActiveDetail,
+        contract: "Eudaimonia · Treasury",
       }
     : {
         n: 4,
-        title: "Philotimo fee",
+        title: "Eudaimonia fee",
         short: "Future stage · not active for this tx",
         timestamp: "—",
         relative: "inactive",
@@ -143,8 +143,8 @@ export function buildStages(input: BuildStagesInput): Stage[] {
         unit: "USDC",
         address: "Not yet deployed",
         addressLabel: "Status",
-        detail: philotimoFutureDetail,
-        contract: "Philotimo · Treasury (future)",
+        detail: eudaimoniaFutureDetail,
+        contract: "Eudaimonia · Treasury (future)",
         inactive: true,
       };
 
@@ -163,5 +163,5 @@ export function buildStages(input: BuildStagesInput): Stage[] {
     terminal: true,
   };
 
-  return [donated, converted, routed, philotimoFee, settled];
+  return [donated, converted, routed, eudaimoniaFee, settled];
 }

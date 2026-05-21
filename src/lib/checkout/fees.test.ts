@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  PHILOTIMO_FEE_BPS,
+  EUDAIMONIA_FEE_BPS,
   ENDAOMENT_FEE_BPS,
   CARD_PROCESSING_BPS,
   CARD_PROCESSING_FLAT_CENTS,
@@ -8,8 +8,8 @@ import {
 } from "./fees";
 
 describe("fee constants", () => {
-  it("locks Philotimo platform fee at 1.00% (100 bps)", () => {
-    expect(PHILOTIMO_FEE_BPS).toBe(100);
+  it("locks Eudaimonia platform fee at 1.00% (100 bps)", () => {
+    expect(EUDAIMONIA_FEE_BPS).toBe(100);
   });
 
   it("locks Endaoment infrastructure fee at 1.50% (150 bps)", () => {
@@ -28,7 +28,7 @@ describe("calculateBreakdown(grossCents)", () => {
     expect(breakdown.grossCents).toBe(0);
     expect(breakdown.rows).toEqual([]);
     expect(breakdown.netToCharityCents).toBe(0);
-    expect(breakdown.philotimoFeeCents).toBe(0);
+    expect(breakdown.eudaimoniaFeeCents).toBe(0);
     expect(breakdown.endaomentFeeCents).toBe(0);
     expect(breakdown.cardProcessingFeeCents).toBe(0);
   });
@@ -44,18 +44,18 @@ describe("calculateBreakdown(grossCents)", () => {
     const breakdown = calculateBreakdown(2500);
     expect(breakdown.grossCents).toBe(2500);
     // 1% of 2500 = 25 cents
-    expect(breakdown.philotimoFeeCents).toBe(25);
+    expect(breakdown.eudaimoniaFeeCents).toBe(25);
     // 1.5% of 2500 = 37.5 → rounds to 38 cents
     expect(breakdown.endaomentFeeCents).toBe(38);
     // 2.9% of 2500 = 72.5 + 30 flat = 102.5 → rounds to 103 cents
     expect(breakdown.cardProcessingFeeCents).toBe(103);
-    // Net = gross - philotimo - endaoment (card fee paid by processor, not deducted from charity)
+    // Net = gross - eudaimonia - endaoment (card fee paid by processor, not deducted from charity)
     expect(breakdown.netToCharityCents).toBe(2500 - 25 - 38);
   });
 
   it("computes correct fees for a $100 donation", () => {
     const breakdown = calculateBreakdown(10000);
-    expect(breakdown.philotimoFeeCents).toBe(100);
+    expect(breakdown.eudaimoniaFeeCents).toBe(100);
     expect(breakdown.endaomentFeeCents).toBe(150);
     expect(breakdown.cardProcessingFeeCents).toBe(320); // 290 + 30
     expect(breakdown.netToCharityCents).toBe(9750);
@@ -63,25 +63,25 @@ describe("calculateBreakdown(grossCents)", () => {
 
   it("computes correct fees for a large $10,000 donation", () => {
     const breakdown = calculateBreakdown(1_000_000);
-    expect(breakdown.philotimoFeeCents).toBe(10_000);
+    expect(breakdown.eudaimoniaFeeCents).toBe(10_000);
     expect(breakdown.endaomentFeeCents).toBe(15_000);
     expect(breakdown.cardProcessingFeeCents).toBe(29_030);
     expect(breakdown.netToCharityCents).toBe(975_000);
   });
 
   it("rounds half-cents to the nearest cent", () => {
-    // $3.33 gross → philotimo = 0.0333 dollars = 3.33¢ → rounds to 3
+    // $3.33 gross → eudaimonia = 0.0333 dollars = 3.33¢ → rounds to 3
     const breakdown = calculateBreakdown(333);
-    expect(breakdown.philotimoFeeCents).toBe(3);
+    expect(breakdown.eudaimoniaFeeCents).toBe(3);
     // endaoment 1.5% of 333 = 4.995¢ → rounds to 5
     expect(breakdown.endaomentFeeCents).toBe(5);
   });
 
-  it("emits ordered rows: gross, philotimo, endaoment, cardProcessing, net", () => {
+  it("emits ordered rows: gross, eudaimonia, endaoment, cardProcessing, net", () => {
     const breakdown = calculateBreakdown(10000);
     expect(breakdown.rows.map((row) => row.kind)).toEqual([
       "gross",
-      "philotimo",
+      "eudaimonia",
       "endaoment",
       "cardProcessing",
       "net",
@@ -94,16 +94,16 @@ describe("calculateBreakdown(grossCents)", () => {
       breakdown.rows.map((row) => [row.kind, row.label]),
     );
     expect(labelByKind.gross).toBe("Gross donation");
-    expect(labelByKind.philotimo).toBe("Philotimo routing fee");
+    expect(labelByKind.eudaimonia).toBe("Eudaimonia routing fee");
     expect(labelByKind.endaoment).toBe("Endaoment fee");
     expect(labelByKind.cardProcessing).toBe("Card processing");
     expect(labelByKind.net).toBe("Net to charity");
   });
 
-  it("includes percentage hint copy on the Philotimo row", () => {
+  it("includes percentage hint copy on the Eudaimonia row", () => {
     const breakdown = calculateBreakdown(10000);
-    const philotimoRow = breakdown.rows.find((row) => row.kind === "philotimo");
-    expect(philotimoRow?.sub).toContain("1.00%");
+    const eudaimoniaRow = breakdown.rows.find((row) => row.kind === "eudaimonia");
+    expect(eudaimoniaRow?.sub).toContain("1.00%");
   });
 
   it("marks the net row as strong and fee rows as muted", () => {
@@ -112,7 +112,7 @@ describe("calculateBreakdown(grossCents)", () => {
       breakdown.rows.map((row) => [row.kind, row]),
     );
     expect(byKind.net.strong).toBe(true);
-    expect(byKind.philotimo.muted).toBe(true);
+    expect(byKind.eudaimonia.muted).toBe(true);
     expect(byKind.endaoment.muted).toBe(true);
     expect(byKind.cardProcessing.muted).toBe(true);
   });

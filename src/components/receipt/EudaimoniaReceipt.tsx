@@ -7,17 +7,17 @@ import { VerificationCard } from "@/components/receipt/VerificationCard";
 import { colors } from "@/lib/tokens";
 import type { ReceiptBundle } from "@/types/receipt";
 
-interface PhilotimoReceiptProps {
+interface EudaimoniaReceiptProps {
   bundle: ReceiptBundle;
   trackerVariant?: "card" | "minimal";
   showFeeStrip?: boolean;
 }
 
-export function PhilotimoReceipt({
+export function EudaimoniaReceipt({
   bundle,
   trackerVariant = "card",
   showFeeStrip = true,
-}: PhilotimoReceiptProps) {
+}: EudaimoniaReceiptProps) {
   return (
     <div
       style={{

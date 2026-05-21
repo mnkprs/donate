@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Philotimo — Transparent donation receipts",
+  title: "Eudaimonia — Transparent donation receipts",
   description:
     "See exactly where your donation goes. Every step, on-chain, immutable.",
 };

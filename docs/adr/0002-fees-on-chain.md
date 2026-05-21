@@ -10,16 +10,16 @@
 
 ## Context
 
-Philotimo deducts a 1% "philotimo" platform fee on top of Endaoment's own 1.5% infrastructure fee and the card processor's ~2.9% + $0.30. The donor sees the breakdown in the order summary (`src/lib/checkout/fees.ts`). The question is *where* the 1% Philotimo fee is physically separated from the donation.
+Eudaimonia deducts a 1% "eudaimonia" platform fee on top of Endaoment's own 1.5% infrastructure fee and the card processor's ~2.9% + $0.30. The donor sees the breakdown in the order summary (`src/lib/checkout/fees.ts`). The question is *where* the 1% Eudaimonia fee is physically separated from the donation.
 
 Two viable points:
 
-1. **At the processor (fiat side)** — Stripe Crypto Onramp mints USDC for `grossCents − philotimoFee` into the router, and the fiat fee is settled to Philotimo's bank via a separate Stripe payout / application fee.
-2. **On-chain (router contract)** — Stripe mints USDC for the full `grossCents` into the router, and the router splits the funds: 1% → Philotimo treasury wallet, 99% → Endaoment charity contract.
+1. **At the processor (fiat side)** — Stripe Crypto Onramp mints USDC for `grossCents − eudaimoniaFee` into the router, and the fiat fee is settled to Eudaimonia's bank via a separate Stripe payout / application fee.
+2. **On-chain (router contract)** — Stripe mints USDC for the full `grossCents` into the router, and the router splits the funds: 1% → Eudaimonia treasury wallet, 99% → Endaoment charity contract.
 
 ## Decision
 
-**Take the 1% Philotimo fee on-chain inside `TransparentDonationRouter.sol`.** Stripe Crypto Onramp is configured with `destination_amount` corresponding to the full donor-paid `grossCents` (minus only Stripe's own card fee, which Stripe deducts implicitly). The router contract then performs the 1%/99% split atomically before forwarding to the Endaoment charity contract.
+**Take the 1% Eudaimonia fee on-chain inside `TransparentDonationRouter.sol`.** Stripe Crypto Onramp is configured with `destination_amount` corresponding to the full donor-paid `grossCents` (minus only Stripe's own card fee, which Stripe deducts implicitly). The router contract then performs the 1%/99% split atomically before forwarding to the Endaoment charity contract.
 
 ```
 Donor pays grossCents (USD)
@@ -28,7 +28,7 @@ Donor pays grossCents (USD)
 Stripe mints USDC ≈ (grossCents − Stripe card fee) into router on Base
       │
       ▼  (router.split() — single tx, atomic)
-      ├── 1% → Philotimo treasury wallet
+      ├── 1% → Eudaimonia treasury wallet
       └── 99% → Endaoment charity contract → vetted charity node
 ```
 
@@ -52,12 +52,12 @@ Stripe mints USDC ≈ (grossCents − Stripe card fee) into router on Base
   - Treasury wallet management (key custody, rotation, multisig) is now a backend operational concern, not just Stripe banking. Mitigation: standard Safe / Gnosis multisig pattern. Out of scope for Epic 3.
   - Gas costs are paid on every donation (router split = one extra internal tx vs. a direct Endaoment send). Negligible on Base (sub-cent) but should be measured.
 - **Operational:**
-  - The Philotimo fee constant **must be hardcoded in the router** (per `CLAUDE.md`: "Maintain a strict, hardcoded platform fee deduction (e.g., 1%) in the routing contract before passing funds to Endaoment."). No admin function to change it post-deploy without a governed upgrade path.
+  - The Eudaimonia fee constant **must be hardcoded in the router** (per `CLAUDE.md`: "Maintain a strict, hardcoded platform fee deduction (e.g., 1%) in the routing contract before passing funds to Endaoment."). No admin function to change it post-deploy without a governed upgrade path.
 
 ## Alternatives considered
 
 - **Fiat-side fee via Stripe application fees** — rejected on transparency and reconciliation grounds described above.
-- **Hybrid: take Stripe's card-processing fee at the processor (already implicit) AND take the Philotimo fee at the processor as a separate line** — adds Stripe application-fee plumbing without buying the transparency we'd lose. No reason to do this.
+- **Hybrid: take Stripe's card-processing fee at the processor (already implicit) AND take the Eudaimonia fee at the processor as a separate line** — adds Stripe application-fee plumbing without buying the transparency we'd lose. No reason to do this.
 - **Take the fee in fiat *and* mirror it on-chain for transparency** — pure overhead. Two ledgers to reconcile, no donor-facing benefit.
 
 ## Follow-ups

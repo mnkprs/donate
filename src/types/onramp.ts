@@ -2,7 +2,7 @@
  * Fiat-to-crypto on-ramp domain types (Epic 3).
  *
  * The on-ramp turns a donor's fiat checkout intent (Epic 2's `CheckoutPayload`)
- * into a USDC settlement on Base addressed to the Philotimo router contract.
+ * into a USDC settlement on Base addressed to the Eudaimonia router contract.
  * The router (Epic 4) deducts the 1% platform fee on-chain, so the on-ramp
  * always settles the FULL gross to the router — never a net amount.
  *
@@ -12,7 +12,7 @@
  */
 
 /**
- * Lifecycle of an on-ramp session as Philotimo tracks it. This is the *domain*
+ * Lifecycle of an on-ramp session as Eudaimonia tracks it. This is the *domain*
  * status, intentionally narrower than Stripe's raw session statuses; the
  * webhook handler (Phase 5) maps Stripe events onto these four states.
  *

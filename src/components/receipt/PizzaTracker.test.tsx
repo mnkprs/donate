@@ -51,7 +51,7 @@ const fixtureStages: Stage[] = [
   },
   {
     n: 4,
-    title: "Philotimo fee",
+    title: "Eudaimonia fee",
     short: "Platform fee held on routing.",
     timestamp: "—",
     relative: "—",
@@ -60,7 +60,7 @@ const fixtureStages: Stage[] = [
     address: "—",
     addressLabel: "Treasury",
     detail: "Future platform fee.",
-    contract: "Philotimo Treasury",
+    contract: "Eudaimonia Treasury",
     inactive: true,
   },
   {
@@ -105,7 +105,7 @@ describe("PizzaTracker", () => {
   test("renders the inactive copy and FUTURE chip for inactive stages", () => {
     const html = renderToString(<PizzaTracker stages={fixtureStages} />);
     expect(html).toContain("Future");
-    expect(html).toContain("no Philotimo fee was charged");
+    expect(html).toContain("no Eudaimonia fee was charged");
   });
 
   test("omits the value block for inactive stages (no amount line shown)", () => {

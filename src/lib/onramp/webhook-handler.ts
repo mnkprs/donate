@@ -23,7 +23,7 @@ import type { KvStore } from "@/lib/kv/kv-store";
 import type { OnrampSession, OnrampStatus } from "@/types/onramp";
 import type { SessionStore } from "./session-store";
 
-/** The only Crypto Onramp webhook topic Philotimo subscribes to. */
+/** The only Crypto Onramp webhook topic Eudaimonia subscribes to. */
 export const ONRAMP_SESSION_UPDATED_EVENT = "crypto.onramp_session.updated";
 
 /**
@@ -102,7 +102,7 @@ const onrampSessionObjectSchema = z.object({
 });
 
 /**
- * Map Stripe's session status onto Philotimo's narrower domain status. Only the
+ * Map Stripe's session status onto Eudaimonia's narrower domain status. Only the
  * two terminal states are matched explicitly; every other (intermediate or
  * future) status is treated as in-flight `pending`.
  */

@@ -53,7 +53,7 @@ describe("HowItWorks", () => {
   test("renders the fee strip with all four fee labels", () => {
     const html = render();
     expect(html).toContain("Fees, in plain sight");
-    expect(html).toContain("Philotimo");
+    expect(html).toContain("Eudaimonia");
     expect(html).toContain("Endaoment");
     expect(html).toContain("Card processing");
     expect(html).toContain("Network");

@@ -26,7 +26,7 @@ export const STEPS: readonly Step[] = [
   {
     n: 3,
     title: "Route",
-    short: "1% to Philotimo",
+    short: "1% to Eudaimonia",
     detail:
       "A flat 1% platform fee is taken on-chain and visible in the receipt. Nothing else, ever.",
   },
@@ -42,7 +42,7 @@ export const STEPS: readonly Step[] = [
     title: "Publish",
     short: "Public receipt",
     detail:
-      "A shareable receipt is published at philotimo.app/receipt/{tx} — immutable, infinitely verifiable.",
+      "A shareable receipt is published at eudaimonia.app/receipt/{tx} — immutable, infinitely verifiable.",
   },
 ] as const;
 
@@ -70,7 +70,7 @@ export function HowItWorks() {
             style={{ letterSpacing: "-0.1px" }}
           >
             Hover any step to see what happens. Every step writes to Base —
-            none of it lives on a Philotimo server.
+            none of it lives on a Eudaimonia server.
           </p>
         </div>
 
@@ -122,7 +122,7 @@ export function HowItWorks() {
           >
             <EyebrowLabel color="#0d253d">Fees, in plain sight</EyebrowLabel>
             <span>
-              <span className="text-mute">Philotimo</span> 1.0%
+              <span className="text-mute">Eudaimonia</span> 1.0%
             </span>
             <span className="text-steel">·</span>
             <span>

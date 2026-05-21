@@ -2,7 +2,7 @@
 
 /* ------------------------- Open Graph (1200x630) -------------------------- */
 
-function PhilotimoOG() {
+function EudaimoniaOG() {
   return (
     <div style={{
       width: 1200, height: 630,
@@ -103,7 +103,7 @@ function PhilotimoOG() {
         <div style={{
           fontSize: 14, color: '#64748d', letterSpacing: '-0.1px',
         }}>
-          philotimo.app/receipt/0xdc67…78ed
+          eudaimonia.app/receipt/0xdc67…78ed
         </div>
       </div>
     </div>
@@ -112,7 +112,7 @@ function PhilotimoOG() {
 
 /* ------------------------ Invalid TxID state -------------------------- */
 
-function PhilotimoInvalid() {
+function EudaimoniaInvalid() {
   return (
     <div style={{
       background: '#ffffff',
@@ -216,7 +216,7 @@ function PhilotimoInvalid() {
             background: '#fff', color: '#0d253d',
             border: '1px solid #e3e8ee', fontSize: 14,
             padding: '10px 18px', borderRadius: 9999, textDecoration: 'none', letterSpacing: '-0.1px',
-          }}>What is Philotimo?</a>
+          }}>What is Eudaimonia?</a>
         </div>
       </div>
     </div>
@@ -238,7 +238,7 @@ const SHIMMER_CSS = `
 }
 `;
 
-function PhilotimoLoading() {
+function EudaimoniaLoading() {
   return (
     <div style={{
       background: '#ffffff',
@@ -337,7 +337,7 @@ function PhilotimoLoading() {
 }
 
 Object.assign(window, {
-  PhilotimoOG,
-  PhilotimoInvalid,
-  PhilotimoLoading,
+  EudaimoniaOG,
+  EudaimoniaInvalid,
+  EudaimoniaLoading,
 });

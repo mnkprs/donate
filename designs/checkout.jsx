@@ -1,4 +1,4 @@
-// checkout.jsx — Philotimo fiat checkout (/donate/[campaignId])
+// checkout.jsx — Eudaimonia fiat checkout (/donate/[campaignId])
 // Two-column split: form (left) + sticky order summary (right).
 // Stripe-derived system per DESIGN.md. Museum wall-label voice per PRODUCT.md.
 // Reuses the φ wordmark + atomic primitives from landing.jsx / receipt.jsx.
@@ -254,7 +254,7 @@ function Pulse({ width = '100%', height = 12, radius = 3, delay = 0, dark = fals
 function PhiMark({ size = 22, color = '#0d253d' }) {
   const s = size;
   return (
-    <svg width={s} height={s} viewBox="0 0 22 22" fill="none" aria-label="Philotimo">
+    <svg width={s} height={s} viewBox="0 0 22 22" fill="none" aria-label="Eudaimonia">
       <circle cx="11" cy="11" r="10" stroke={color} strokeWidth="1" />
       <line x1="11" y1="3.5" x2="11" y2="18.5" stroke={color} strokeWidth="1" />
       <ellipse cx="11" cy="11" rx="4.2" ry="3.2" stroke={color} strokeWidth="1" fill="none" />
@@ -269,7 +269,7 @@ function Wordmark({ size = 16, color = '#0d253d' }) {
       <span style={{
         fontSize: size, fontWeight: 300, letterSpacing: '-0.2px',
         fontFeatureSettings: '"ss01"', color,
-      }}>Philotimo</span>
+      }}>Eudaimonia</span>
     </div>
   );
 }
@@ -477,13 +477,13 @@ function OrderSummaryRow({ label, sub, value, mute, strong, currency }) {
 function OrderSummary({ amount, coverFees, currency, processing }) {
   // Math is illustrative — production replaces with server-quoted breakdown.
   const gross = Number(amount) || 0;
-  const philotimoFee = +(gross * 0.01).toFixed(2);
+  const eudaimoniaFee = +(gross * 0.01).toFixed(2);
   const endaomentFee = +(gross * 0.015).toFixed(2);
   // Card processing approx: 2.9% + 0.30 — disclosed in plain sight per the brand.
   const cardFee = gross > 0 ? +(gross * 0.029 + 0.30).toFixed(2) : 0;
 
-  const baseTotal = coverFees ? +(gross + philotimoFee + cardFee).toFixed(2) : gross;
-  const netOnChain = +(gross - philotimoFee - endaomentFee).toFixed(2);
+  const baseTotal = coverFees ? +(gross + eudaimoniaFee + cardFee).toFixed(2) : gross;
+  const netOnChain = +(gross - eudaimoniaFee - endaomentFee).toFixed(2);
 
   const fmt = (n) => n.toFixed(2);
 
@@ -518,9 +518,9 @@ function OrderSummary({ amount, coverFees, currency, processing }) {
             />
             <div style={{ borderTop: '1px dashed #e3e8ee' }} />
             <OrderSummaryRow
-              label="Philotimo routing fee"
+              label="Eudaimonia routing fee"
               sub="1.00% · taken on-chain, visible in receipt"
-              value={fmt(philotimoFee)}
+              value={fmt(eudaimoniaFee)}
               mute
               currency={currency}
             />
@@ -634,7 +634,7 @@ function SummarySkeleton() {
 
 function ProcessingStrip({ phase }) {
   // phase 0..3
-  const stages = ['Authorizing card', 'Minting USDC on Base', 'Routing through Philotimo', 'Almost there'];
+  const stages = ['Authorizing card', 'Minting USDC on Base', 'Routing through Eudaimonia', 'Almost there'];
   return (
     <div style={{
       marginTop: 14,
@@ -760,7 +760,7 @@ function CheckoutPage({
           <TextArea
             value={note}
             onChange={setNote}
-            placeholder="For my grandmother, who taught me what philotimo means."
+            placeholder="For my grandmother, who taught me what eudaimonia means."
           />
         </div>
       )}
@@ -957,7 +957,7 @@ function CheckoutPage({
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, color: '#64748d', letterSpacing: '-0.1px' }}>
               <EyebrowLabel color="#0d253d">In plain sight</EyebrowLabel>
               <span>
-                The 1% Philotimo fee is taken on-chain and is visible in your public receipt. The 1.5% Endaoment
+                The 1% Eudaimonia fee is taken on-chain and is visible in your public receipt. The 1.5% Endaoment
                 fee covers the charitable infrastructure. We never custody your funds.
               </span>
             </div>

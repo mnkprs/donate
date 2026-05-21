@@ -1,4 +1,4 @@
-// receipt-mobile.jsx — Philotimo receipt, mobile (390px width)
+// receipt-mobile.jsx — Eudaimonia receipt, mobile (390px width)
 // Vertical Pizza Tracker; collapsed verification grid; same content, restacked.
 
 function MobileHero() {
@@ -185,7 +185,7 @@ function MobileTracker() {
               </div>
               {isInactive ? (
                 <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5, color: '#64748d', letterSpacing: '-0.1px', fontStyle: 'italic' }}>
-                  Future Philotimo donations will route a 1% fee here. No Philotimo fee was charged on this transaction.
+                  Future Eudaimonia donations will route a 1% fee here. No Eudaimonia fee was charged on this transaction.
                 </p>
               ) : (
                 <React.Fragment>
@@ -302,7 +302,7 @@ function MobileVerification() {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748d' }}>Donor paid</span><span>$1.00</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748d' }}>Endaoment fee (1.5%)</span><span>−$0.015</span></div>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748d' }}>Philotimo fee</span><span style={{ fontStyle: 'italic' }}>not active</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#64748d' }}>Eudaimonia fee</span><span style={{ fontStyle: 'italic' }}>not active</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 6, borderTop: '1px dashed #e3e8ee' }}>
           <span style={{ color: '#0d253d' }}>Charity received</span>
           <strong style={{ color: '#0d253d', fontWeight: 400 }}>$0.985</strong>
@@ -335,17 +335,17 @@ function MobileFooter() {
     <footer style={{ padding: '24px 24px 48px' }}>
       <Wordmark size={12} color="#64748d" />
       <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-        <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#533afd', textDecoration: 'none' }}>What is Philotimo? →</a>
+        <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#533afd', textDecoration: 'none' }}>What is Eudaimonia? →</a>
         <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#64748d', textDecoration: 'none' }}>How fees work</a>
       </div>
       <div style={{ marginTop: 18, fontSize: 11, color: '#64748d', lineHeight: 1.5 }}>
-        Philotimo is a non-custodial donation router. Donations are processed through Endaoment Inc.
+        Eudaimonia is a non-custodial donation router. Donations are processed through Endaoment Inc.
       </div>
     </footer>
   );
 }
 
-function PhilotimoReceiptMobile() {
+function EudaimoniaReceiptMobile() {
   return (
     <div style={{
       background: '#ffffff',
@@ -366,4 +366,4 @@ function PhilotimoReceiptMobile() {
   );
 }
 
-Object.assign(window, { PhilotimoReceiptMobile });
+Object.assign(window, { EudaimoniaReceiptMobile });

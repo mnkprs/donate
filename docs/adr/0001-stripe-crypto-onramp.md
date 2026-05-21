@@ -9,9 +9,9 @@
 
 ## Context
 
-Philotimo routes fiat donations to charity through a custom Solidity router on Base. The user pays USD with a card, the on-ramp mints USDC on Base into our router contract, and the router splits the funds between our treasury (1%) and the Endaoment charity contract (99%). The on-ramp must:
+Eudaimonia routes fiat donations to charity through a custom Solidity router on Base. The user pays USD with a card, the on-ramp mints USDC on Base into our router contract, and the router splits the funds between our treasury (1%) and the Endaoment charity contract (99%). The on-ramp must:
 
-1. Accept the donor's card and KYC at the provider edge so Philotimo never touches PAN/PCI data.
+1. Accept the donor's card and KYC at the provider edge so Eudaimonia never touches PAN/PCI data.
 2. Deliver USDC to a destination address we control (the router) on Base mainnet (Base Sepolia in sandbox).
 3. Carry an opaque per-donation identifier (campaign id + Endaoment org id) all the way through the funding leg so the router can post-process the donation deterministically.
 4. Expose a webhook so our backend can record `sessionId → expectedTxHash` for receipt-page resolution.
@@ -21,7 +21,7 @@ The two providers in scope were **Stripe Crypto Onramp** and **MoonPay**.
 
 ## Decision
 
-**Adopt Stripe Crypto Onramp** as the fiat-to-crypto provider for Philotimo's MVP.
+**Adopt Stripe Crypto Onramp** as the fiat-to-crypto provider for Eudaimonia's MVP.
 
 The donation flow becomes:
 
