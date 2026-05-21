@@ -1,0 +1,9 @@
+# Foundry build artifacts
+out/
+cache/
+
+# Dependencies (vendored via shallow clone; not committed)
+lib/
+
+# Env
+.env
