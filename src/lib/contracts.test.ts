@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { keccak256, toBytes, toEventHash, type Address } from "viem";
+import {
+  encodeAbiParameters,
+  encodeEventTopics,
+  isAddress,
+  keccak256,
+  parseAbiItem,
+  toBytes,
+  toEventHash,
+  type Address,
+} from "viem";
 import { base, baseSepolia } from "wagmi/chains";
 import {
   DONATION_ROUTED_EVENT,
   ROUTER_SUPPORTED_CHAIN_IDS,
+  decodeDonationRoutedLog,
   getRouterAddress,
 } from "./contracts";
 
@@ -78,5 +88,93 @@ describe("getRouterAddress", () => {
   it("returns undefined for a malformed env address rather than a bad value", () => {
     vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE", "not-an-address");
     expect(getRouterAddress(base.id)).toBeUndefined();
+  });
+});
+
+describe("decodeDonationRoutedLog", () => {
+  const DONOR = "0xe0adb1b3c4d5e6f708192a3b4c5d6e7f8a097bb0" as Address;
+  const ORG = "0x10fda5891234567890abcdef1234567890abcdef" as Address;
+
+  // 100 USDC donation (6 decimals): 1% fee, 99% net. Mirrors the Foundry
+  // previewSplit fixture (100e6 → 1e6 / 99e6) so the on-chain math and the
+  // off-chain decode share one canonical example.
+  const GROSS = 100_000_000n;
+  const FEE = 1_000_000n;
+  const NET = 99_000_000n;
+
+  // viem 2.x has no single `encodeEventLog`; a real log is the indexed topics
+  // (signature + donor + org) plus ABI-encoded non-indexed data (gross/fee/net).
+  const UINT256_TRIPLE = [
+    { type: "uint256" },
+    { type: "uint256" },
+    { type: "uint256" },
+  ] as const;
+
+  /** Encode a real-shaped DonationRouted log fixture from typed args. */
+  const encodeFixtureLog = (
+    args: { donor: Address; org: Address; gross: bigint; fee: bigint; net: bigint } = {
+      donor: DONOR,
+      org: ORG,
+      gross: GROSS,
+      fee: FEE,
+      net: NET,
+    },
+  ) => ({
+    topics: encodeEventTopics({
+      abi: [DONATION_ROUTED_EVENT],
+      eventName: "DonationRouted",
+      args: { donor: args.donor, org: args.org },
+    }),
+    data: encodeAbiParameters(UINT256_TRIPLE, [args.gross, args.fee, args.net]),
+  });
+
+  it("round-trips encode → decode back to the original typed args", () => {
+    // Catches ABI/topic/order drift that the hash-binding test cannot:
+    // a log encoded from the event must decode to exactly its inputs.
+    const { topics, data } = encodeFixtureLog();
+
+    const decoded = decodeDonationRoutedLog({ topics, data });
+
+    expect(decoded).toEqual({
+      donor: DONOR,
+      org: ORG,
+      gross: GROSS,
+      fee: FEE,
+      net: NET,
+    });
+  });
+
+  it("preserves the fee + net == gross conservation invariant", () => {
+    // Same invariant the Foundry suite fuzzes on-chain (Task 2). The decoder
+    // must surface raw bigints faithfully so this holds off-chain too.
+    const { topics, data } = encodeFixtureLog();
+
+    const { gross, fee, net } = decodeDonationRoutedLog({ topics, data });
+
+    expect(fee + net).toBe(gross);
+  });
+
+  it("returns the indexed args as checksummed addresses", () => {
+    const { topics, data } = encodeFixtureLog();
+
+    const { donor, org } = decodeDonationRoutedLog({ topics, data });
+
+    expect(isAddress(donor)).toBe(true);
+    expect(isAddress(org)).toBe(true);
+  });
+
+  it("throws on a log whose signature topic is a different event", () => {
+    // A foreign event's log must not be silently mis-decoded as DonationRouted.
+    const foreignEvent = parseAbiItem(
+      "event Transfer(address indexed from, address indexed to, uint256 value)",
+    );
+    const topics = encodeEventTopics({
+      abi: [foreignEvent],
+      eventName: "Transfer",
+      args: { from: DONOR, to: ORG },
+    });
+    const data = encodeAbiParameters([{ type: "uint256" }], [GROSS]);
+
+    expect(() => decodeDonationRoutedLog({ topics, data })).toThrow();
   });
 });
