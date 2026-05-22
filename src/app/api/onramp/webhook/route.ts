@@ -24,11 +24,8 @@
 import Stripe from "stripe";
 import { serverEnv } from "@/lib/env/server";
 import { logger } from "@/lib/log/logger";
-import { onrampKvStore } from "@/lib/onramp/onramp-kv";
-import {
-  inMemorySessionStore,
-  type SessionStore,
-} from "@/lib/onramp/session-store";
+import { onrampKvStore, onrampSessionStore } from "@/lib/onramp/onramp-kv";
+import type { SessionStore } from "@/lib/onramp/session-store";
 import {
   applyOnrampSessionEvent,
   createProcessedEventLog,
@@ -120,7 +117,7 @@ export function POST(request: Request): Promise<Response> {
   const env = serverEnv();
   return handleOnrampWebhook(request, {
     webhookSecret: env.STRIPE_ONRAMP_WEBHOOK_SECRET,
-    store: inMemorySessionStore,
+    store: onrampSessionStore(),
     processedEvents: webhookProcessedEvents,
     constructEvent: (payload, signature, secret) =>
       getStripe().webhooks.constructEvent(payload, signature, secret),

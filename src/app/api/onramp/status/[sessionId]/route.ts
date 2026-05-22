@@ -17,10 +17,8 @@
  * Next runtime; `GET` wires the process-global singleton.
  */
 
-import {
-  inMemorySessionStore,
-  type SessionStore,
-} from "@/lib/onramp/session-store";
+import { onrampSessionStore } from "@/lib/onramp/onramp-kv";
+import type { SessionStore } from "@/lib/onramp/session-store";
 import type {
   OnrampErrorBody,
   OnrampErrorCode,
@@ -83,5 +81,5 @@ export function GET(
   _request: Request,
   context: { params: Promise<{ sessionId: string }> },
 ): Promise<Response> {
-  return handleGetStatus(context.params, { store: inMemorySessionStore });
+  return handleGetStatus(context.params, { store: onrampSessionStore() });
 }
