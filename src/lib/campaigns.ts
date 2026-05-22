@@ -5,14 +5,14 @@ import type { Campaign } from "@/types/campaign";
  * to a server-side data source. Order here is the order rendered on `/`.
  *
  * Source for charity metadata: designs/landing.jsx (5-45).
- * Endaoment Org IDs: TODO — looked up in Epic 4 (Endaoment SDK integration).
+ * Endaoment org addresses are resolved per-chain by EIN in
+ * `src/lib/endaoment/orgs.ts` (Epic 5), not stored on the campaign.
  */
 export const CAMPAIGNS: readonly Campaign[] = [
   {
     id: "pcrf",
     name: "Palestine Children's Relief Fund",
     ein: "95-4374418",
-    endaomentOrgId: "TODO-pcrf",
     tag: "Urgent · Gaza",
     mission:
       "Medical aid, trauma care, and surgical missions for injured children across Gaza and the West Bank.",
@@ -24,7 +24,6 @@ export const CAMPAIGNS: readonly Campaign[] = [
     id: "wck",
     name: "World Central Kitchen",
     ein: "27-1273172",
-    endaomentOrgId: "TODO-wck",
     tag: "Active · Ukraine, Sudan, Gaza",
     mission:
       "Hot meals on the ground within hours of any crisis — wherever cooks can stand up a kitchen.",
@@ -36,7 +35,6 @@ export const CAMPAIGNS: readonly Campaign[] = [
     id: "directrelief",
     name: "Direct Relief",
     ein: "95-1831116",
-    endaomentOrgId: "TODO-directrelief",
     tag: "Recurring · Global",
     mission:
       "Medicine and supplies routed to community clinics in 90+ countries, including disaster response.",

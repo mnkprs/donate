@@ -99,7 +99,7 @@ export function DonorDetails({
             rows={3}
             value={note}
             onChange={onNoteChange}
-            placeholder="For my grandmother, who taught me what philotimo means."
+            placeholder="For my grandmother, who taught me what eudaimonia means."
           />
         </div>
       )}

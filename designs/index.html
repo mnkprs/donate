@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Philotimo — Receipt Page</title>
+  <title>Eudaimonia — Receipt Page</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -45,24 +45,24 @@
       return (
         <React.Fragment>
           <DesignCanvas>
-            <DCSection id="primary" title="Philotimo · Receipt" subtitle="philotimo.app/receipt/0xdc67…78ed — desktop + mobile + share image">
+            <DCSection id="primary" title="Eudaimonia · Receipt" subtitle="eudaimonia.app/receipt/0xdc67…78ed — desktop + mobile + share image">
               <DCArtboard id="desktop" label="Desktop · 1440" width={1440} height={2080}>
-                <PhilotimoReceipt trackerStyle={t.trackerStyle} showFeeStrip={t.showFeeStrip} />
+                <EudaimoniaReceipt trackerStyle={t.trackerStyle} showFeeStrip={t.showFeeStrip} />
               </DCArtboard>
               <DCArtboard id="mobile" label="Mobile · 390" width={390} height={2200}>
-                <PhilotimoReceiptMobile />
+                <EudaimoniaReceiptMobile />
               </DCArtboard>
               <DCArtboard id="og" label="Open Graph · 1200×630" width={1200} height={630}>
-                <PhilotimoOG />
+                <EudaimoniaOG />
               </DCArtboard>
             </DCSection>
 
             <DCSection id="states" title="States" subtitle="Empty + skeleton — when the URL has no valid tx, or while the chain is loading">
               <DCArtboard id="invalid" label="Invalid TxID · /receipt/0xnothing" width={1440} height={860}>
-                <PhilotimoInvalid />
+                <EudaimoniaInvalid />
               </DCArtboard>
               <DCArtboard id="loading" label="Loading · skeleton" width={1440} height={1100}>
-                <PhilotimoLoading />
+                <EudaimoniaLoading />
               </DCArtboard>
             </DCSection>
           </DesignCanvas>
@@ -91,11 +91,11 @@
 
     // Wait until all babel scripts have finished compiling + exporting.
     function boot() {
-      if (typeof PhilotimoReceipt === 'undefined'
-          || typeof PhilotimoReceiptMobile === 'undefined'
-          || typeof PhilotimoOG === 'undefined'
-          || typeof PhilotimoInvalid === 'undefined'
-          || typeof PhilotimoLoading === 'undefined'
+      if (typeof EudaimoniaReceipt === 'undefined'
+          || typeof EudaimoniaReceiptMobile === 'undefined'
+          || typeof EudaimoniaOG === 'undefined'
+          || typeof EudaimoniaInvalid === 'undefined'
+          || typeof EudaimoniaLoading === 'undefined'
           || typeof DesignCanvas === 'undefined'
           || typeof TweaksPanel === 'undefined') {
         setTimeout(boot, 30);

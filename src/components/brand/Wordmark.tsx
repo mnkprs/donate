@@ -19,7 +19,7 @@ export function Wordmark({ size = 16, color = colors.ink }: WordmarkProps) {
           color,
         }}
       >
-        Philotimo
+        Eudaimonia
       </span>
     </div>
   );

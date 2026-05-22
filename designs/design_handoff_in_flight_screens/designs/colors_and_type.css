@@ -1,0 +1,156 @@
+/*
+ * Eudaimonia — Colors & Typography
+ * ─────────────────────────────────────────────────────────────────────────
+ * Brand: Eudaimonia (Greek φιλότιμο — sense of duty to do right by others).
+ * A transparent on-chain donation platform built on Base L2.
+ *
+ * Visual system derives from the Stripe Design System (per donate/DESIGN.md),
+ * but renamed in code for the Eudaimonia palette: iris (CTA), ink (body),
+ * cream (warm interlude), urgent (sparingly).
+ *
+ * Inter is the open-source substitute for Söhne (proprietary). Bring real
+ * Söhne files into `fonts/` and swap the @font-face if licensed.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  /* ─── Brand & Accent ────────────────────────────────────────────────── */
+  --color-iris: #533afd;              /* primary CTA, link emphasis */
+  --color-iris-hover: #4434d4;        /* CTA :hover / :active */
+  --color-iris-press: #2e2b8c;        /* deepest pressed iris */
+  --color-iris-soft: #665efd;         /* product accents, chart highlight */
+  --color-iris-subdued: #b9b9f9;      /* pale fill for soft tags */
+  --color-iris-bg: #eef0fe;           /* very pale CTA tag background */
+
+  --color-ink-dark: #1c1e54;          /* featured pricing / dashboard chrome */
+  --color-ruby: #ea2261;              /* gradient accent — never a button */
+  --color-magenta: #f96bee;           /* gradient pink stop */
+  --color-lemon: #9b6829;             /* warm sherbet gradient stop */
+
+  /* ─── Surface ───────────────────────────────────────────────────────── */
+  --color-canvas: #ffffff;            /* default page background */
+  --color-canvas-soft: #f6f9fc;       /* cool-tinted off-white band fill */
+  --color-canvas-cream: #f5e9d4;      /* warm cream interlude band */
+  --color-surface-mute: #fafbfc;      /* subtle off-white card */
+  --color-tint: #f6f9fc;              /* same as canvas-soft, alias used widely */
+
+  /* ─── Lines ─────────────────────────────────────────────────────────── */
+  --color-hairline: #e3e8ee;          /* 1px borders on cards & tables */
+  --color-hairline-soft: #eef2f6;     /* even softer inactive divider */
+  --color-hairline-input: #a8c3de;    /* form input border — cooler */
+  --color-steel: #a8c3de;             /* dashed borders, inactive accents */
+
+  /* ─── Text ──────────────────────────────────────────────────────────── */
+  --color-ink: #0d253d;               /* default body text — deep navy, never #000 */
+  --color-ink-secondary: #273951;     /* secondary text */
+  --color-ink-mute: #56627a;          /* helper, captions (AA-safe on tint) */
+  --color-ink-mute-2: #61718a;        /* near-equiv used in nav */
+  --color-on-primary: #ffffff;        /* text on iris/dark surfaces */
+
+  /* ─── Semantic (sparing) ────────────────────────────────────────────── */
+  --color-urgent: #c14040;            /* urgent campaign badges, error states */
+
+  /* ─── Type families ─────────────────────────────────────────────────── */
+  --font-sans: "Inter", "SF Pro Display", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --font-serif: Georgia, "Times New Roman", serif;   /* used for Greek script */
+
+  /* ─── Spacing scale (8px base + 2/4/12 sub-tokens) ──────────────────── */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-huge: 64px;
+
+  /* ─── Radius ────────────────────────────────────────────────────────── */
+  --radius-xs: 4px;       /* hairline tags, table chrome */
+  --radius-sm: 6px;       /* form inputs */
+  --radius-md: 8px;       /* compact cards, alerts */
+  --radius-lg: 12px;      /* pricing & feature cards */
+  --radius-xl: 16px;      /* dashboard mockup chrome */
+  --radius-2xl: 20px;     /* hero-scale rounded panels */
+  --radius-pill: 9999px;  /* all buttons + tag pills */
+
+  /* ─── Elevation ─────────────────────────────────────────────────────── */
+  --shadow-1: 0 1px 3px rgba(0, 55, 112, 0.08);
+  --shadow-2: 0 8px 24px rgba(0, 55, 112, 0.08),
+              0 2px 6px  rgba(0, 55, 112, 0.04);
+  --shadow-hi: 0 14px 40px rgba(0, 55, 112, 0.08),
+               0 2px 6px   rgba(0, 55, 112, 0.04);
+  --shadow-focus-iris: 0 0 0 6px rgba(83, 58, 253, 0.10);
+}
+
+/* ─── Page baseline ─────────────────────────────────────────────────────── */
+html, body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  font-feature-settings: "ss01";          /* on globally — brand signature */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Type roles ────────────────────────────────────────────────────────── */
+/* Display tiers always weight 300 with negative tracking — the brand's
+   editorial signature. Bumping to ≥400 collapses the air. */
+.t-display-xxl  { font-size: 56px; font-weight: 300; line-height: 1.03; letter-spacing: -1.4px;  }
+.t-display-xl   { font-size: 48px; font-weight: 300; line-height: 1.15; letter-spacing: -0.96px; }
+.t-display-lg   { font-size: 32px; font-weight: 300; line-height: 1.10; letter-spacing: -0.64px; }
+.t-display-md   { font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; }
+
+.t-heading-lg   { font-size: 22px; font-weight: 300; line-height: 1.10; letter-spacing: -0.22px; }
+.t-heading-md   { font-size: 20px; font-weight: 300; line-height: 1.40; letter-spacing: -0.20px; }
+.t-heading-sm   { font-size: 18px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       }
+
+.t-body-lg      { font-size: 16px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       }
+.t-body-md      { font-size: 15px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       }
+
+/* Tabular figures — the brand's quiet financial-data signal. Apply to any
+   cell rendering money, transaction values, counts, addresses. */
+.t-body-tabular { font-size: 14px; font-weight: 300; line-height: 1.40; letter-spacing: -0.42px;
+                  font-feature-settings: "tnum", "ss01"; font-variant-numeric: tabular-nums; }
+
+.t-button-md    { font-size: 16px; font-weight: 400; line-height: 1.00; letter-spacing: 0;       }
+.t-button-sm    { font-size: 14px; font-weight: 400; line-height: 1.00; letter-spacing: 0;       }
+
+.t-caption      { font-size: 13px; font-weight: 400; line-height: 1.40; letter-spacing: -0.39px; }
+.t-micro        { font-size: 11px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       }
+.t-micro-cap    { font-size: 10px; font-weight: 400; line-height: 1.15; letter-spacing: 0.12em;
+                  text-transform: uppercase; }
+
+.t-mono         { font-family: var(--font-mono); font-weight: 400; letter-spacing: -0.2px;
+                  font-feature-settings: "tnum", "ss01"; }
+
+/* ─── Semantic mappings (use these if you want bare HTML to render right) */
+h1 { font-size: 56px; font-weight: 300; line-height: 1.03; letter-spacing: -1.4px;  color: var(--color-ink); margin: 0; }
+h2 { font-size: 32px; font-weight: 300; line-height: 1.10; letter-spacing: -0.64px; color: var(--color-ink); margin: 0; }
+h3 { font-size: 22px; font-weight: 300; line-height: 1.10; letter-spacing: -0.22px; color: var(--color-ink); margin: 0; }
+h4 { font-size: 18px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       color: var(--color-ink); margin: 0; }
+p  { font-size: 15px; font-weight: 300; line-height: 1.40; letter-spacing: 0;       color: var(--color-ink); margin: 0; }
+code, kbd, samp { font-family: var(--font-mono); font-size: 0.92em; }
+
+/* The all-caps eyebrow above every section title — a brand staple. */
+.eyebrow {
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-mute);
+  font-feature-settings: "ss01";
+}
+
+/* Highlight rule — yellow-marker style hand-painted under a phrase. The brand's
+   signature emphasis device, never bold. Use sparingly: one word per heading. */
+.highlight-iris {
+  background-image: linear-gradient(
+    transparent 68%,
+    rgba(83, 58, 253, 0.18) 68%,
+    rgba(83, 58, 253, 0.18) 92%,
+    transparent 92%
+  );
+}

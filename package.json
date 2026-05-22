@@ -1,5 +1,5 @@
 {
-  "name": "philotimo",
+  "name": "eudaimonia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -12,7 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps",
-    "test:a11y:lighthouse": "lhci autorun"
+    "test:a11y:lighthouse": "lhci autorun",
+    "postinstall": "node scripts/patch-chrome-launcher.mjs"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.10",
@@ -21,6 +22,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
     "next": "16.2.6",
+    "pino": "^10.3.1",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",

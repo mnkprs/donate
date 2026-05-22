@@ -17,7 +17,7 @@ interface PizzaTrackerProps {
 }
 
 const INACTIVE_COPY =
-  "Future Philotimo donations will route a 1% platform fee here. This receipt is for an existing Endaoment donation, so no Philotimo fee was charged.";
+  "Future Eudaimonia donations will route a 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.";
 
 export function PizzaTracker({ stages, variant = "card" }: PizzaTrackerProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);

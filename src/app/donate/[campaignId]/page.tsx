@@ -6,7 +6,7 @@ import { CheckoutMesh } from "@/components/checkout/CheckoutMesh";
 import { Footer } from "@/components/landing/Footer";
 import { NavBar } from "@/components/landing/NavBar";
 import { getCampaignById } from "@/lib/campaigns";
-import { stubSubmit } from "@/lib/checkout/stubSubmit";
+import { submitDonation } from "@/lib/checkout/submitDonation";
 
 interface DonatePageProps {
   params: Promise<{ campaignId: string }>;
@@ -25,7 +25,7 @@ export default async function DonatePage({ params }: DonatePageProps) {
         <div className="mb-6">
           <CampaignSummary campaign={campaign} />
         </div>
-        <CheckoutForm campaignId={campaign.id} onSubmit={stubSubmit} />
+        <CheckoutForm campaignId={campaign.id} onSubmit={submitDonation} />
       </main>
       <Footer />
     </>

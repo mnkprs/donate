@@ -30,6 +30,14 @@ export const colors = {
   inkDeep: "#273951",
   /** Iris hover state — primary CTA :hover / :active fill. */
   irisHover: "#4434d4",
+  /** Iris pressed — eyebrow text on iris-tinted pills (in-flight tracker). */
+  irisPress: "#2e2b8c",
+  /** Iris wash — status-pill background on the live tracker. */
+  irisBg: "#eef0fe",
+  /** Lighter urgent — failure card borders (in-flight tracker). */
+  urgentSoft: "#f4cfcf",
+  /** Urgent wash — failure error-strip background. */
+  urgentBg: "#fbecec",
   /** Cream band background — warm accent for editorial sections. */
   cream: "#f5e9d4",
   /** Urgent red — used sparingly for time-sensitive campaign badges. */

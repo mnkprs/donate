@@ -1,6 +1,6 @@
-// receipt.jsx — Philotimo public donation receipt
+// receipt.jsx — Eudaimonia public donation receipt
 // Single page: Hero, Pizza Tracker, Charity card, Verification card, Share row, Footer.
-// Original Philotimo identity (φ mark + Greek-rooted wordmark). Design tokens per DESIGN.md.
+// Original Eudaimonia identity (φ mark + Greek-rooted wordmark). Design tokens per DESIGN.md.
 
 const RECEIPT_DATA = {
   donorShort: '0xe0adb1…7a097bb',
@@ -68,7 +68,7 @@ const STAGES = [
   },
   {
     n: 4,
-    title: 'Philotimo fee',
+    title: 'Eudaimonia fee',
     short: 'Future stage · not active for this tx',
     timestamp: '—',
     relative: 'inactive',
@@ -76,8 +76,8 @@ const STAGES = [
     unit: 'USDC',
     address: 'Not yet deployed',
     addressLabel: 'Status',
-    detail: 'Future Philotimo donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Philotimo fee was charged.',
-    contract: 'Philotimo · Treasury (future)',
+    detail: 'Future Eudaimonia donations will route through our 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.',
+    contract: 'Eudaimonia · Treasury (future)',
     inactive: true,
   },
   {
@@ -99,11 +99,11 @@ const STAGES = [
 /* ----------------------------- Atoms ---------------------------------- */
 
 function PhiMark({ size = 22, color = '#0d253d' }) {
-  // Original Philotimo mark: stylized φ inside a thin circle, hand-set to feel
+  // Original Eudaimonia mark: stylized φ inside a thin circle, hand-set to feel
   // like a wall-label monogram rather than a logo lockup.
   const s = size;
   return (
-    <svg width={s} height={s} viewBox="0 0 22 22" fill="none" aria-label="Philotimo">
+    <svg width={s} height={s} viewBox="0 0 22 22" fill="none" aria-label="Eudaimonia">
       <circle cx="11" cy="11" r="10" stroke={color} strokeWidth="1" />
       <line x1="11" y1="3.5" x2="11" y2="18.5" stroke={color} strokeWidth="1" />
       <ellipse cx="11" cy="11" rx="4.2" ry="3.2" stroke={color} strokeWidth="1" fill="none" />
@@ -121,7 +121,7 @@ function Wordmark({ size = 16, color = '#0d253d' }) {
         letterSpacing: '-0.2px',
         fontFeatureSettings: '"ss01"',
         color,
-      }}>Philotimo</span>
+      }}>Eudaimonia</span>
     </div>
   );
 }
@@ -520,7 +520,7 @@ function PizzaTracker({ variant = 'card' }) {
                     letterSpacing: '-0.1px',
                     fontStyle: 'italic',
                   }}>
-                    Future Philotimo donations will route a 1% platform fee here. This receipt is for an existing Endaoment donation, so no Philotimo fee was charged.
+                    Future Eudaimonia donations will route a 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.
                   </p>
                 ) : (
                   <React.Fragment>
@@ -712,7 +712,7 @@ function VerificationCard({ showFeeStrip = true }) {
           <span><span style={{ color: '#64748d' }}>Donor paid</span> $1.00</span>
           <span><span style={{ color: '#64748d' }}>Network fee</span> $0.00 (sponsored)</span>
           <span><span style={{ color: '#64748d' }}>Endaoment fee</span> $0.015 (1.5%)</span>
-          <span><span style={{ color: '#64748d' }}>Philotimo fee</span> not active</span>
+          <span><span style={{ color: '#64748d' }}>Eudaimonia fee</span> not active</span>
           <span style={{ paddingLeft: 16, borderLeft: '1px solid #e3e8ee' }}>
             <span style={{ color: '#64748d' }}>Charity received</span> <strong style={{ color: '#0d253d', fontWeight: 400 }}>$0.985</strong>
           </span>
@@ -806,7 +806,7 @@ function Footer() {
           <Wordmark size={13} color="#64748d" />
         </div>
         <div style={{ display: 'flex', gap: 24 }}>
-          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#533afd', textDecoration: 'none' }}>What is Philotimo? →</a>
+          <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#533afd', textDecoration: 'none' }}>What is Eudaimonia? →</a>
           <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#64748d', textDecoration: 'none' }}>How fees work</a>
           <a href="#" onClick={(e) => e.preventDefault()} style={{ color: '#64748d', textDecoration: 'none' }}>Contact</a>
         </div>
@@ -815,7 +815,7 @@ function Footer() {
         marginTop: 18,
         fontSize: 11, color: '#64748d', letterSpacing: '-0.1px', maxWidth: 720, lineHeight: 1.5,
       }}>
-        Philotimo is a non-custodial donation router. Donations are tax-deductible to the extent allowed by law,
+        Eudaimonia is a non-custodial donation router. Donations are tax-deductible to the extent allowed by law,
         processed through Endaoment Inc. (EIN 84-3104578). This receipt is generated from on-chain data and is
         verifiable independently.
       </div>
@@ -825,7 +825,7 @@ function Footer() {
 
 /* ----------------------------- Page ----------------------------------- */
 
-function PhilotimoReceipt({ trackerStyle = 'card', showFeeStrip = true }) {
+function EudaimoniaReceipt({ trackerStyle = 'card', showFeeStrip = true }) {
   return (
     <div style={{
       background: '#ffffff',
@@ -847,7 +847,7 @@ function PhilotimoReceipt({ trackerStyle = 'card', showFeeStrip = true }) {
 }
 
 Object.assign(window, {
-  PhilotimoReceipt,
+  EudaimoniaReceipt,
   PhiMark,
   Wordmark,
   RECEIPT_DATA,

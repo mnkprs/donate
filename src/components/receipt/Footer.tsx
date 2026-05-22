@@ -19,7 +19,7 @@ export function Footer() {
         </div>
         <div style={{ display: "flex", gap: 24 }}>
           <FooterLink href="#" emphasis>
-            What is Philotimo? →
+            What is Eudaimonia? →
           </FooterLink>
           <FooterLink href="#">How fees work</FooterLink>
           <FooterLink href="#">Contact</FooterLink>
@@ -36,7 +36,7 @@ export function Footer() {
           lineHeight: 1.5,
         }}
       >
-        Philotimo is a non-custodial donation router. Donations are tax-deductible
+        Eudaimonia is a non-custodial donation router. Donations are tax-deductible
         to the extent allowed by law, processed through Endaoment Inc. (EIN
         84-3104578). This receipt is generated from on-chain data and is
         verifiable independently.

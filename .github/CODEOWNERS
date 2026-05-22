@@ -1,0 +1,9 @@
+# Default owner for everything in the repo.
+* @mnkprs
+
+# Money-moving and security-sensitive surfaces — keep ownership explicit so
+# review is never silently skipped.
+/contracts/        @mnkprs
+/src/app/api/      @mnkprs
+/.github/          @mnkprs
+SECURITY.md        @mnkprs

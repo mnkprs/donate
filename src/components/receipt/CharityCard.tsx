@@ -1,3 +1,4 @@
+import { EndaomentBadge } from "@/components/brand/EndaomentBadge";
 import { EyebrowLabel } from "@/components/ui/EyebrowLabel";
 import { colors } from "@/lib/tokens";
 import type { ReceiptData } from "@/types/receipt";
@@ -8,6 +9,11 @@ interface CharityCardProps {
   monogram?: string;
   /** External link to the charity's site. */
   href?: string;
+  /**
+   * BaseScan URL for the Endaoment org address. When provided the
+   * "Verified by Endaoment" badge becomes an anchor to the on-chain record.
+   */
+  baseScanUrl?: string;
 }
 
 function deriveMonogram(name: string): string {
@@ -17,7 +23,7 @@ function deriveMonogram(name: string): string {
   return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
 }
 
-export function CharityCard({ data, monogram, href = "#" }: CharityCardProps) {
+export function CharityCard({ data, monogram, href = "#", baseScanUrl }: CharityCardProps) {
   const initials = monogram ?? deriveMonogram(data.charity);
 
   return (
@@ -90,6 +96,9 @@ export function CharityCard({ data, monogram, href = "#" }: CharityCardProps) {
           >
             {data.mission}
           </p>
+          <div style={{ marginTop: 12 }}>
+            <EndaomentBadge size="sm" href={baseScanUrl} />
+          </div>
         </div>
 
         <a

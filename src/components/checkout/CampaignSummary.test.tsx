@@ -8,7 +8,6 @@ const sampleCampaign: Campaign = {
   id: "pcrf",
   name: "Palestine Children's Relief Fund",
   ein: "95-4374418",
-  endaomentOrgId: "TODO-pcrf",
   tag: "Urgent · Gaza",
   mission:
     "Medical aid, trauma care, and surgical missions for injured children across Gaza and the West Bank.",

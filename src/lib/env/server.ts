@@ -31,6 +31,15 @@ export const serverEnvSchema = z.object({
       "USDC_CONTRACT_BASE_SEPOLIA must match 0x[a-fA-F0-9]{40}",
     ),
   NEXT_PUBLIC_CHAIN: z.enum(["base", "base-sepolia"]),
+  /**
+   * Endaoment REST API base URL. Defaults to the production endpoint so
+   * development and CI work without explicit configuration. Override in
+   * `.env.local` when you need to point at a staging instance.
+   */
+  ENDAOMENT_API_URL: z
+    .string()
+    .url("ENDAOMENT_API_URL must be a valid URL")
+    .default("https://api.endaoment.org"),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

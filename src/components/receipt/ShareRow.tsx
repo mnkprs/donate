@@ -13,7 +13,7 @@ interface ShareRowProps {
 
 export function ShareRow({
   shareUrl,
-  shareText = "Verified donation receipt on Philotimo.",
+  shareText = "Verified donation receipt on Eudaimonia.",
 }: ShareRowProps) {
   return (
     <section style={{ maxWidth: 1240, margin: "0 auto", padding: "8px 64px 88px" }}>
@@ -84,7 +84,7 @@ function CopyLinkButton({ shareUrl }: CopyLinkButtonProps) {
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
       // Clipboard permission denied or unsupported — fail silent for now.
-      // TODO(philotimo): wire a toast/error state once the design system has one.
+      // TODO(eudaimonia): wire a toast/error state once the design system has one.
     }
   }
 

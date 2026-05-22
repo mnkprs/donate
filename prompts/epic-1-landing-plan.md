@@ -1,7 +1,7 @@
 # Epic 1 — Curated Campaigns Landing Page: TDD Plan
 
 > Status as of last save: **Phase 4 complete.** Resume at Phase 5 (Responsive Pass).
-> GitHub: [mnkprs/Philotimo#2](https://github.com/mnkprs/Philotimo/issues/2)
+> GitHub: [mnkprs/Eudaimonia#2](https://github.com/mnkprs/Eudaimonia/issues/2)
 > Source design: `designs/landing.jsx` (1,121 lines, Babel-rendered prototype, inline styles)
 > Target: `src/app/page.tsx` + modular Tailwind components
 
@@ -345,7 +345,7 @@ npx playwright install --with-deps
 # Confirm state
 git status && git log --oneline -5
 npm test  # should be 23 passing
-gh issue view 2 --repo mnkprs/Philotimo
+gh issue view 2 --repo mnkprs/Eudaimonia
 
 # Start Phase 2
 # Write src/lib/campaigns.test.ts (RED)

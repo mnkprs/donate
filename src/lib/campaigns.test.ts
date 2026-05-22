@@ -12,7 +12,6 @@ const REQUIRED_STRING_FIELDS: Array<keyof Campaign> = [
   "id",
   "name",
   "ein",
-  "endaomentOrgId",
   "tag",
   "mission",
   "swatch",

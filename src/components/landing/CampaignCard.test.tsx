@@ -64,6 +64,11 @@ describe("CampaignCard", () => {
     expect(html).not.toMatch(/\$0\b/);
   });
 
+  test('renders "Verified by Endaoment" badge', () => {
+    const html = renderToString(<CampaignCard campaign={pcrf} />);
+    expect(html).toContain("Verified by Endaoment");
+  });
+
   test("loaded stats render raised/donors/receipts values", () => {
     const html = renderToString(
       <CampaignCard

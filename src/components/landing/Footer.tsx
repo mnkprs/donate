@@ -11,7 +11,7 @@ export function Footer() {
             className="mt-4 text-xs leading-[1.6] text-mute"
             style={{ letterSpacing: "-0.1px" }}
           >
-            Philotimo routes donations to vetted 501(c)(3) charities through
+            Eudaimonia routes donations to vetted 501(c)(3) charities through
             Endaoment Org Funds on Base L2. We take a flat 1% platform fee,
             disclosed in every receipt. Donations are tax-deductible in the US;
             your receipt is your record.
@@ -19,7 +19,7 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-2 text-xs text-mute">
-          <span>&copy; {year} Philotimo</span>
+          <span>&copy; {year} Eudaimonia</span>
           <a href="/terms" className="text-ink no-underline hover:opacity-70">
             Terms
           </a>

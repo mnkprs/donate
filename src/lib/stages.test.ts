@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildStages, type BuildStagesInput } from "./stages";
 
 // Reference input matching the design fixture in designs/receipt.jsx:28-97.
-// This is the canonical Endaoment-only receipt — no Philotimo fee was taken,
+// This is the canonical Endaoment-only receipt — no Eudaimonia fee was taken,
 // so stage 4 must come out `inactive`.
 const referenceInput: BuildStagesInput = {
   donor: {
@@ -33,7 +33,7 @@ const referenceInput: BuildStagesInput = {
     timestamp: "17:34:07 UTC",
     relativeSeconds: 3,
   },
-  philotimoFeeActive: false,
+  eudaimoniaFeeActive: false,
 };
 
 describe("buildStages", () => {
@@ -45,7 +45,7 @@ describe("buildStages", () => {
       "Donated",
       "Converted",
       "Routed",
-      "Philotimo fee",
+      "Eudaimonia fee",
       "Settled",
     ]);
   });
@@ -98,13 +98,13 @@ describe("buildStages", () => {
     });
   });
 
-  it("stage 4 (Philotimo fee) is INACTIVE when no platform fee was taken", () => {
-    const philotimoFee = buildStages(referenceInput)[3];
-    expect(philotimoFee.inactive).toBe(true);
-    expect(philotimoFee.amount).toBe("0.00");
-    expect(philotimoFee.timestamp).toBe("—");
-    expect(philotimoFee.address).toBe("Not yet deployed");
-    expect(philotimoFee.contract).toBe("Philotimo · Treasury (future)");
+  it("stage 4 (Eudaimonia fee) is INACTIVE when no platform fee was taken", () => {
+    const eudaimoniaFee = buildStages(referenceInput)[3];
+    expect(eudaimoniaFee.inactive).toBe(true);
+    expect(eudaimoniaFee.amount).toBe("0.00");
+    expect(eudaimoniaFee.timestamp).toBe("—");
+    expect(eudaimoniaFee.address).toBe("Not yet deployed");
+    expect(eudaimoniaFee.contract).toBe("Eudaimonia · Treasury (future)");
   });
 
   it("stage 5 (Settled) is TERMINAL and carries the final confirmation count", () => {
@@ -123,8 +123,8 @@ describe("buildStages", () => {
     expect(settled.detail).toContain("15,041,902 confirmations");
   });
 
-  it("activates stage 4 when philotimoFeeActive is true", () => {
-    const stages = buildStages({ ...referenceInput, philotimoFeeActive: true });
+  it("activates stage 4 when eudaimoniaFeeActive is true", () => {
+    const stages = buildStages({ ...referenceInput, eudaimoniaFeeActive: true });
     expect(stages[3].inactive).toBeFalsy();
   });
 });

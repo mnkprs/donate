@@ -14,7 +14,7 @@ describe("OrderSummary — empty state", () => {
   test("does not render fee rows when breakdown has no rows", () => {
     const breakdown = calculateBreakdown(0);
     const html = renderToString(<OrderSummary breakdown={breakdown} />);
-    expect(html).not.toContain("Philotimo routing fee");
+    expect(html).not.toContain("Eudaimonia routing fee");
     expect(html).not.toContain("Net to charity");
   });
 
@@ -34,9 +34,9 @@ describe("OrderSummary — ready state with breakdown rows", () => {
     expect(html).toContain("$50.00");
   });
 
-  test('renders the Philotimo routing fee row with "1.00%" disclosure', () => {
+  test('renders the Eudaimonia routing fee row with "1.00%" disclosure', () => {
     const html = renderToString(<OrderSummary breakdown={breakdown} />);
-    expect(html).toContain("Philotimo routing fee");
+    expect(html).toContain("Eudaimonia routing fee");
     expect(html).toContain("1.00%");
   });
 
@@ -94,7 +94,7 @@ describe("OrderSummary — submitting (skeleton) state", () => {
     const html = renderToString(
       <OrderSummary breakdown={breakdown} state="submitting" />,
     );
-    expect(html).not.toContain("Philotimo routing fee");
+    expect(html).not.toContain("Eudaimonia routing fee");
     expect(html).not.toContain("Net to charity");
   });
 

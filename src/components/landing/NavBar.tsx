@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { Wordmark } from "@/components/brand/Wordmark";
+import { PhiMark } from "@/components/brand/PhiMark";
 import { ArrowRight } from "@/components/ui/ArrowRight";
 import { PillButton } from "@/components/ui/PillButton";
 
@@ -17,11 +17,14 @@ export function NavBar() {
       aria-label="Primary"
       className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 py-6 sm:px-6 lg:px-16"
     >
+      {/* Brand identity now lives in the hero meanings card, so the nav carries
+          only the φ monogram — the link supplies the accessible name. */}
       <Link
         href="/"
+        aria-label="Eudaimonia — home"
         className="inline-flex min-h-11 items-center no-underline"
       >
-        <Wordmark size={15} />
+        <PhiMark size={26} />
       </Link>
 
       <div className="hidden items-center gap-7 md:flex">

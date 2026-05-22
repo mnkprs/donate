@@ -1,0 +1,6 @@
+# Force structured reports — disable blank issues so they route through a template.
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/mnkprs/donate/security/advisories/new
+    about: Report a vulnerability privately. Do NOT open a public issue.

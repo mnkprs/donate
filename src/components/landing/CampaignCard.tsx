@@ -1,3 +1,4 @@
+import { EndaomentBadge } from "@/components/brand/EndaomentBadge";
 import { ArrowRight } from "@/components/ui/ArrowRight";
 import { Num } from "@/components/ui/Num";
 import { PillButton } from "@/components/ui/PillButton";
@@ -60,6 +61,10 @@ export function CampaignCard({ campaign, stats }: CampaignCardProps) {
         >
           {campaign.mission}
         </p>
+
+        <div className="mt-3">
+          <EndaomentBadge size="sm" />
+        </div>
 
         <StatRow stats={stats} />
 

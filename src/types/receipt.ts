@@ -1,8 +1,8 @@
-// Type contract for a Philotimo donation receipt.
+// Type contract for a Eudaimonia donation receipt.
 // Mirrors the design-time shape in designs/receipt.jsx:5-97.
-// Stage 4 ("Philotimo fee") is currently `inactive` for receipts that route
+// Stage 4 ("Eudaimonia fee") is currently `inactive` for receipts that route
 // through Endaoment directly without our platform fee — future donations
-// originated by Philotimo will populate it.
+// originated by Eudaimonia will populate it.
 
 export type Hex = `0x${string}`;
 
@@ -39,7 +39,7 @@ export interface ReceiptData {
   ethIn: string;
   /** Swap rate text, e.g. "1 ETH = 15,975 USDC". */
   rate: string;
-  /** Philotimo platform fee (USDC). "0.00" when stage 4 is inactive. */
+  /** Eudaimonia platform fee (USDC). "0.00" when stage 4 is inactive. */
   platformFee: string;
   /** Endaoment protocol fee (USDC). */
   endaomentFee: string;
@@ -57,7 +57,7 @@ export type StageTitle =
   | "Donated"
   | "Converted"
   | "Routed"
-  | "Philotimo fee"
+  | "Eudaimonia fee"
   | "Settled";
 
 export type StageUnit = "ETH" | "USDC";
@@ -95,7 +95,7 @@ export interface Stage {
   /**
    * Stage represents a fee deduction in the timeline — renders with muted
    * ring, navy fill, and a `−` prefix on the amount. Set true on stage 4
-   * once the Philotimo platform fee becomes active.
+   * once the Eudaimonia platform fee becomes active.
    */
   fee?: boolean;
   /** Stage exists in the timeline but did not execute for this tx. */

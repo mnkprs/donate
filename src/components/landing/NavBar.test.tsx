@@ -10,10 +10,10 @@ describe("NavBar", () => {
     expect(html).toContain('aria-label="Primary"');
   });
 
-  test("wordmark links back to /", () => {
+  test("brand mark links home with an accessible name (no wordmark text)", () => {
     const html = renderToString(<NavBar />);
     expect(html).toContain('href="/"');
-    expect(html).toContain("Philotimo");
+    expect(html).toContain('aria-label="Eudaimonia — home"');
   });
 
   test("renders the four primary section links", () => {
@@ -24,7 +24,7 @@ describe("NavBar", () => {
     expect(html).toContain("For nonprofits");
   });
 
-  test('Donate CTA links to /donate', () => {
+  test("Donate CTA links to /donate", () => {
     const html = renderToString(<NavBar />);
     expect(html).toContain('href="/donate"');
     expect(html).toContain("Donate");
