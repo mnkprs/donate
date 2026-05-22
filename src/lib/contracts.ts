@@ -1,4 +1,10 @@
-import { isAddress, parseAbiItem, type Address } from "viem";
+import {
+  decodeEventLog,
+  isAddress,
+  parseAbiItem,
+  type Address,
+  type Hex,
+} from "viem";
 import { base, baseSepolia } from "wagmi/chains";
 
 /**
@@ -64,4 +70,68 @@ export function getRouterAddress(chainId: number): Address | undefined {
   if (!candidate || !isAddress(candidate)) return undefined;
 
   return candidate;
+}
+
+/**
+ * Decoded `DonationRouted` event arguments, as raw on-chain values.
+ *
+ * Amounts are USDC base units (6 decimals) as `bigint` — the same units the
+ * contract emits. Display formatting and the mapping onto receipt stages
+ * (`gross → routing`, `fee → eudaimonia`, `net → settlement`) are deliberately
+ * left to the Epic 5 receipt decoder, which also composes the off-chain swap
+ * and settlement data the event does not carry. Keeping this function value-
+ * faithful means `fee + net === gross` always holds for callers.
+ */
+export interface DonationRoutedArgs {
+  /** Donor EOA that funded the donation (indexed topic). */
+  donor: Address;
+  /** Targeted Endaoment org Entity (indexed topic). */
+  org: Address;
+  /** Total USDC pulled from the donor, in base units. */
+  gross: bigint;
+  /** Eudaimonia 1% platform fee routed to the treasury, in base units. */
+  fee: bigint;
+  /** Net USDC forwarded to the org Entity, in base units. */
+  net: bigint;
+}
+
+/**
+ * The raw log fields a decoder needs: the topic array and ABI-encoded data.
+ *
+ * `topics` mirrors viem's own log shape — an indexed arg topic may be a single
+ * hash, an array (for hashed dynamic types), or `null` — so a viem `Log` or the
+ * output of `encodeEventTopics` is accepted directly without a cast at callsites.
+ */
+export interface RawEventLog {
+  topics: readonly (Hex | readonly Hex[] | null)[];
+  data: Hex;
+}
+
+/**
+ * Decodes a raw `DonationRouted` log into typed arguments.
+ *
+ * Strictly bound to {@link DONATION_ROUTED_EVENT}: a log whose signature topic
+ * belongs to a different event throws rather than silently mis-decoding, so the
+ * receipt pipeline can never attribute a foreign transfer to a donation.
+ *
+ * @param log The `topics`/`data` pair from an on-chain log (e.g. a viem `Log`).
+ * @returns The decoded donor, org, and gross/fee/net amounts as `bigint`.
+ * @throws If the log does not match the `DonationRouted` signature/shape.
+ */
+export function decodeDonationRoutedLog(log: RawEventLog): DonationRoutedArgs {
+  const { args } = decodeEventLog({
+    abi: [DONATION_ROUTED_EVENT],
+    eventName: "DonationRouted",
+    topics: log.topics as [Hex, ...Hex[]],
+    data: log.data,
+    strict: true,
+  });
+
+  return {
+    donor: args.donor,
+    org: args.org,
+    gross: args.gross,
+    fee: args.fee,
+    net: args.net,
+  };
 }

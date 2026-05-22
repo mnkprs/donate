@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   encodeAbiParameters,
   encodeEventTopics,
+  getAddress,
   isAddress,
   keccak256,
   parseAbiItem,
@@ -92,15 +93,19 @@ describe("getRouterAddress", () => {
 });
 
 describe("decodeDonationRoutedLog", () => {
-  const DONOR = "0xe0adb1b3c4d5e6f708192a3b4c5d6e7f8a097bb0" as Address;
-  const ORG = "0x10fda5891234567890abcdef1234567890abcdef" as Address;
+  // Canonical (EIP-55 checksummed) form — viem decodes addresses to this, so
+  // using it here makes the round-trip exact rather than case-sensitive-fragile.
+  const DONOR = getAddress("0xe0adb1b3c4d5e6f708192a3b4c5d6e7f8a097bb0");
+  const ORG = getAddress("0x10fda5891234567890abcdef1234567890abcdef");
 
   // 100 USDC donation (6 decimals): 1% fee, 99% net. Mirrors the Foundry
   // previewSplit fixture (100e6 → 1e6 / 99e6) so the on-chain math and the
   // off-chain decode share one canonical example.
-  const GROSS = 100_000_000n;
-  const FEE = 1_000_000n;
-  const NET = 99_000_000n;
+  // `BigInt(...)` rather than `n` literals: tsconfig targets ES2017, where
+  // BigInt literal syntax is a compile error (TS2737) even though the type works.
+  const GROSS = BigInt(100_000_000);
+  const FEE = BigInt(1_000_000);
+  const NET = BigInt(99_000_000);
 
   // viem 2.x has no single `encodeEventLog`; a real log is the indexed topics
   // (signature + donor + org) plus ABI-encoded non-indexed data (gross/fee/net).
