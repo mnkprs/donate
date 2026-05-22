@@ -1,4 +1,4 @@
-import type { Stage } from "@/types/receipt";
+import type { Stage, StageUnit } from "@/types/receipt";
 
 export interface BuildStagesInput {
   donor: {
@@ -11,6 +11,31 @@ export interface BuildStagesInput {
     /** Calendar date displayed on stage 1, e.g. "May 30, 2025". */
     date: string;
   };
+  /**
+   * USDC-provenance mode for on-chain-only receipts (D1, Epic 6 Task 3).
+   *
+   * When present, stage 1 is recast as "Donated (USDC in)" using the USDC
+   * amount from the on-chain gross transfer (no fabricated ETH value), and
+   * stage 2 is rendered as off-chain informational (`inactive: true`) with no
+   * Uniswap pool or rate references. This overrides the `donor.amountEth`
+   * and `swap.*` fields for stages 1-2 only; stages 3-5 are unaffected.
+   *
+   * Omit (or pass `undefined`) for the legacy ETH/swap-centric receipt path —
+   * existing behaviour and tests are fully preserved.
+   */
+  usdcProvenance?: {
+    /** USDC amount string, e.g. "1.000000". Used as stage 1 amount. */
+    amountUsdc: string;
+    /** Short description for stage 2, e.g. "Fiat → USDC via off-chain onramp". */
+    offChainShort: string;
+  };
+  /**
+   * Controls how relative-time labels are rendered.
+   *
+   * - `'seconds'` (default): "+Ns" offsets from stage 1 (legacy path).
+   * - `'same-block'`: all on-chain stages share one block; relative = "same block".
+   */
+  relativeMode?: "seconds" | "same-block";
   swap: {
     /** Display label of the AMM pool, e.g. "Uniswap V3 · 0.05% pool". */
     pool: string;
@@ -30,6 +55,12 @@ export interface BuildStagesInput {
     amountAfterFee: string;
     /** Endaoment protocol fee shown on hover. */
     endaomentFee: { amount: string; to: string };
+    /**
+     * Eudaimonia platform fee amount string, e.g. "0.010000".
+     * Only consumed when `eudaimoniaFeeActive` is true.
+     * Falls back to "0.01" when omitted (legacy path).
+     */
+    eudaimoniaFeeAmount?: string;
     timestamp: string;
     relativeSeconds: number;
   };
@@ -49,13 +80,18 @@ export interface BuildStagesInput {
   eudaimoniaFeeActive: boolean;
 }
 
-const formatRelative = (seconds: number): string => `+${seconds}s`;
+const formatRelativeSeconds = (seconds: number): string => `+${seconds}s`;
+
+const SAME_BLOCK_RELATIVE = "same block";
 
 const donorDetail =
   "Donor signed and broadcast the tx from their wallet. No personal data is stored; only the wallet hash.";
 
 const buildSwapDetail = (rate: string): string =>
   `Swapped on the Base ETH/USDC 0.05% pool. Slippage settled at $0.00; rate locked at ${rate}.`;
+
+const OFF_CHAIN_SWAP_DETAIL =
+  "Fiat currency was converted to USDC off-chain via the onramp provider before this transaction. No ETH swap occurred on-chain.";
 
 const routingDetail = (endaomentFeeAmount: string): string =>
   `OrgFundFactory routes donations to the recipient charity’s Endaoment fund based on its EIN. Endaoment’s 1.5% fee ($${endaomentFeeAmount}) is taken on-chain at this step.`;
@@ -70,42 +106,81 @@ const buildSettledDetail = (confirmations: string): string =>
   `${confirmations} confirmations. Final. The funds are spendable by the charity’s multisig.`;
 
 export function buildStages(input: BuildStagesInput): Stage[] {
-  const { donor, swap, routing, settlement, eudaimoniaFeeActive } = input;
+  const {
+    donor,
+    swap,
+    routing,
+    settlement,
+    eudaimoniaFeeActive,
+    usdcProvenance,
+    relativeMode = "seconds",
+  } = input;
+
+  const isSameBlock = relativeMode === "same-block";
+
+  // Stage 1 — varies by provenance mode
+  const stage1Amount: string = usdcProvenance
+    ? usdcProvenance.amountUsdc
+    : donor.amountEth;
+  const stage1Unit: StageUnit = usdcProvenance ? "USDC" : "ETH";
+  const stage1Short: string = usdcProvenance
+    ? "Donor wallet sent USDC"
+    : "Donor wallet sent funds";
 
   const donated: Stage = {
     n: 1,
     title: "Donated",
-    short: "Donor wallet sent funds",
+    short: stage1Short,
     timestamp: donor.timestamp,
     relative: donor.date,
-    amount: donor.amountEth,
-    unit: "ETH",
+    amount: stage1Amount,
+    unit: stage1Unit,
     address: donor.addressShort,
     addressLabel: "From",
     detail: donorDetail,
     contract: "Wallet · EOA",
   };
 
-  const converted: Stage = {
-    n: 2,
-    title: "Converted",
-    short: "ETH → USDC via Uniswap V3",
-    timestamp: swap.timestamp,
-    relative: formatRelative(swap.relativeSeconds),
-    amount: swap.amountUsdcOut,
-    unit: "USDC",
-    address: swap.pool,
-    addressLabel: "Pool",
-    detail: buildSwapDetail(swap.rate),
-    contract: "Uniswap V3 Router",
-  };
+  // Stage 2 — off-chain informational when usdcProvenance is active
+  const converted: Stage = usdcProvenance
+    ? {
+        n: 2,
+        title: "Converted",
+        short: usdcProvenance.offChainShort,
+        timestamp: "—",
+        relative: "off-chain",
+        amount: "—",
+        unit: "USDC",
+        address: "Off-chain onramp",
+        addressLabel: "Provider",
+        detail: OFF_CHAIN_SWAP_DETAIL,
+        contract: "Off-chain · Onramp",
+        inactive: true,
+      }
+    : {
+        n: 2,
+        title: "Converted",
+        short: "ETH → USDC via Uniswap V3",
+        timestamp: swap.timestamp,
+        relative: isSameBlock
+          ? SAME_BLOCK_RELATIVE
+          : formatRelativeSeconds(swap.relativeSeconds),
+        amount: swap.amountUsdcOut,
+        unit: "USDC",
+        address: swap.pool,
+        addressLabel: "Pool",
+        detail: buildSwapDetail(swap.rate),
+        contract: "Uniswap V3 Router",
+      };
 
   const routed: Stage = {
     n: 3,
     title: "Routed",
     short: "Through Endaoment · 1.5% fee taken",
     timestamp: routing.timestamp,
-    relative: formatRelative(routing.relativeSeconds),
+    relative: isSameBlock
+      ? SAME_BLOCK_RELATIVE
+      : formatRelativeSeconds(routing.relativeSeconds),
     amount: routing.amountAfterFee,
     unit: "USDC",
     address: routing.orgFundShort,
@@ -125,8 +200,10 @@ export function buildStages(input: BuildStagesInput): Stage[] {
         title: "Eudaimonia fee",
         short: "1% platform fee taken on-chain",
         timestamp: routing.timestamp,
-        relative: formatRelative(routing.relativeSeconds),
-        amount: "0.01",
+        relative: isSameBlock
+          ? SAME_BLOCK_RELATIVE
+          : formatRelativeSeconds(routing.relativeSeconds),
+        amount: routing.eudaimoniaFeeAmount ?? "0.01",
         unit: "USDC",
         address: "Eudaimonia Treasury",
         addressLabel: "Treasury",
@@ -153,7 +230,9 @@ export function buildStages(input: BuildStagesInput): Stage[] {
     title: "Settled",
     short: "Arrived at charity address",
     timestamp: settlement.timestamp,
-    relative: formatRelative(settlement.relativeSeconds),
+    relative: isSameBlock
+      ? SAME_BLOCK_RELATIVE
+      : formatRelativeSeconds(settlement.relativeSeconds),
     amount: settlement.amountUsdc,
     unit: "USDC",
     address: settlement.charityAddrShort,
