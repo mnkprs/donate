@@ -22,6 +22,8 @@
 @theme {
   --color-iris: #533afd;
   --color-iris-hover: #4434d4;
+  --color-iris-press: #2e2b8c;
+  --color-iris-bg: #eef0fe;
   --color-ink: #0d253d;
   --color-ink-dark: #1c1e54;
   --color-slate: #273951;
@@ -33,6 +35,55 @@
   --color-tint: #f6f9fc;
   --color-cream: #f5e9d4;
   --color-urgent: #c14040;
+  --color-urgent-soft: #f4cfcf;
+  --color-urgent-bg: #fbecec;
+}
+
+/*
+ * In-flight tracker motion (Epic 5). Defined once here so they exist for
+ * SSR and aren't re-emitted per render. No bounce/spring/parallax — those
+ * break the brand (see design_handoff README "Animations").
+ *   euda-pulse     — expanding ring on the active stage node (1.6s)
+ *   euda-dot-pulse — soft glow on small status-pill dots (1.2s)
+ *   euda-skel      — skeleton shimmer on the receipt preview (1.6s)
+ */
+@keyframes euda-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+@keyframes euda-dot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(83, 58, 253, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(83, 58, 253, 0.06);
+  }
+}
+@keyframes euda-skel {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-euda-motion] {
+    animation: none !important;
+  }
 }
 
 /*

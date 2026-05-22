@@ -19,6 +19,13 @@ describe("design tokens — JS source (tokens.ts)", () => {
     expect(colors.urgent).toBe("#c14040");
   });
 
+  test("exposes in-flight tracker tokens added in Epic 5", () => {
+    expect(colors.irisPress).toBe("#2e2b8c");
+    expect(colors.irisBg).toBe("#eef0fe");
+    expect(colors.urgentSoft).toBe("#f4cfcf");
+    expect(colors.urgentBg).toBe("#fbecec");
+  });
+
   test("all hex values are 6-digit lowercase", () => {
     const hexPattern = /^#[0-9a-f]{6}$/;
     for (const [name, value] of Object.entries(colors)) {
@@ -42,6 +49,12 @@ describe("design tokens — CSS source (globals.css @theme)", () => {
     expect(css).toMatch(/--color-cream:\s*#f5e9d4/);
     expect(css).toMatch(/--color-tint:\s*#f6f9fc/);
     expect(css).toMatch(/--color-urgent:\s*#c14040/);
+  });
+
+  test("declares the in-flight tracker keyframes (Epic 5)", () => {
+    expect(css).toMatch(/@keyframes\s+euda-pulse/);
+    expect(css).toMatch(/@keyframes\s+euda-dot-pulse/);
+    expect(css).toMatch(/@keyframes\s+euda-skel/);
   });
 
   test("CSS tokens stay in sync with JS tokens for shared values", () => {
