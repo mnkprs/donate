@@ -27,12 +27,11 @@ import { z } from "zod";
 import { serverEnv, type ServerEnv } from "@/lib/env/server";
 import { MAX_AMOUNT_CENTS, MIN_AMOUNT_CENTS } from "@/lib/checkout/validation";
 import { CLIENT_REQUEST_ID_HEADER } from "@/lib/onramp/idempotency";
-import { onrampKvStore } from "@/lib/onramp/onramp-kv";
+import { onrampKvStore, onrampSessionStore } from "@/lib/onramp/onramp-kv";
 import { createOnrampSession } from "@/lib/onramp/stripe";
 import { logger } from "@/lib/log/logger";
 import {
   createIdempotencyIndex,
-  inMemorySessionStore,
   type IdempotencyEntry,
   type IdempotencyIndex,
   type SessionStore,
@@ -374,7 +373,7 @@ const sessionRateLimiter = createRateLimiter(onrampKvStore(), {
 export function POST(request: Request): Promise<Response> {
   return handleCreateSession(request, {
     env: serverEnv(),
-    store: inMemorySessionStore,
+    store: onrampSessionStore(),
     idempotency: sessionIdempotencyIndex,
     rateLimiter: sessionRateLimiter,
   });
