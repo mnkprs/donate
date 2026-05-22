@@ -11,13 +11,13 @@ export interface Campaign {
   id: string;
   /** Public-facing charity name. */
   name: string;
-  /** US IRS Employer Identification Number, format "NN-NNNNNNN". */
-  ein: string;
   /**
-   * Endaoment Org Fund identifier. Required by the Endaoment SDK to route
-   * funds. Stubbed with a TODO placeholder until Epic 4 wires real lookups.
+   * US IRS Employer Identification Number, format "NN-NNNNNNN". This is the
+   * chain-agnostic key the Endaoment org address map and metadata snapshot are
+   * keyed by (see `src/lib/endaoment/orgs.ts`); the per-chain org address lives
+   * there, not on the campaign.
    */
-  endaomentOrgId: string;
+  ein: string;
   /** Short status pill, e.g. "Urgent · Gaza". */
   tag: string;
   /** 1–2 sentence mission statement shown on the campaign card. */
