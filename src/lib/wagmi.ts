@@ -23,5 +23,7 @@ declare module "wagmi" {
 export {
   DONATION_ROUTED_EVENT,
   ROUTER_SUPPORTED_CHAIN_IDS,
+  decodeDonationRoutedLog,
   getRouterAddress,
 } from "./contracts";
+export type { DonationRoutedArgs, RawEventLog } from "./contracts";
