@@ -15,6 +15,7 @@ contract DeployTest is Test {
     // the script reads the real ones from env at broadcast time.
     address internal constant USDC = address(0xA11CE);
     address internal constant TREASURY = address(0xB0B);
+    address internal constant OWNER = address(0x0FFE); // allowlist owner (H1)
 
     Deploy internal deployer;
 
@@ -23,26 +24,34 @@ contract DeployTest is Test {
     }
 
     function test_Deploy_WiresUsdcAndTreasuryIntoRouter() public {
-        TransparentDonationRouter router = deployer._deploy(USDC, TREASURY);
+        TransparentDonationRouter router = deployer._deploy(USDC, TREASURY, OWNER);
 
         assertEq(address(router.usdc()), USDC, "usdc immutable mismatch");
         assertEq(router.treasury(), TREASURY, "treasury immutable mismatch");
     }
 
+    /// @notice The deploy seam threads the allowlist owner (H1) through to the
+    ///         router so the curation admin is set at construction, not later.
+    function test_Deploy_WiresOwnerIntoRouter() public {
+        TransparentDonationRouter router = deployer._deploy(USDC, TREASURY, OWNER);
+
+        assertEq(router.owner(), OWNER, "owner not wired into router");
+    }
+
     function test_Deploy_DeploysFreshRouterEachCall() public {
-        TransparentDonationRouter a = deployer._deploy(USDC, TREASURY);
-        TransparentDonationRouter b = deployer._deploy(USDC, TREASURY);
+        TransparentDonationRouter a = deployer._deploy(USDC, TREASURY, OWNER);
+        TransparentDonationRouter b = deployer._deploy(USDC, TREASURY, OWNER);
 
         assertTrue(address(a) != address(b), "expected distinct deployments");
     }
 
     function test_Deploy_PropagatesZeroUsdcRevert() public {
         vm.expectRevert(TransparentDonationRouter.ZeroAddress.selector);
-        deployer._deploy(address(0), TREASURY);
+        deployer._deploy(address(0), TREASURY, OWNER);
     }
 
     function test_Deploy_PropagatesZeroTreasuryRevert() public {
         vm.expectRevert(TransparentDonationRouter.ZeroAddress.selector);
-        deployer._deploy(USDC, address(0));
+        deployer._deploy(USDC, address(0), OWNER);
     }
 }

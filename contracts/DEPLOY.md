@@ -18,12 +18,13 @@ any broadcast.
 
 ## Environment
 
-The script reads two addresses from the environment:
+The script reads three addresses from the environment:
 
 | Var | Meaning |
 |---|---|
 | `USDC_ADDRESS` | USDC token on the target network |
 | `TREASURY_ADDRESS` | Address that receives the 1% platform fee |
+| `OWNER_ADDRESS` | Allowlist owner — curates which Endaoment orgs `donate` may forward to (H1). **Must be a multisig in production** (see review M4). |
 
 Canonical USDC addresses:
 
@@ -38,6 +39,7 @@ Basescan keys (`BASE_RPC_URL`, `BASE_SEPOLIA_RPC_URL`, `BASESCAN_API_KEY`).
 ```powershell
 $env:USDC_ADDRESS     = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
 $env:TREASURY_ADDRESS = "<your treasury address>"
+$env:OWNER_ADDRESS    = "<allowlist owner — a multisig on mainnet>"
 $env:BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org"   # or an authenticated URL
 $env:BASESCAN_API_KEY = "<key>"
 
@@ -55,7 +57,23 @@ donation and confirm the 1/99 split on Basescan.
 Same command with `--rpc-url base` and the mainnet USDC address. Double-check
 `TREASURY_ADDRESS` before broadcasting — it is immutable once deployed.
 
-## 3. Wire the address into the frontend
+## 3. Allowlist the target orgs (required — donations revert until you do)
+
+`donate` forwards only to orgs the owner has vetted (H1). A freshly deployed
+router has an **empty allowlist, so every donation reverts with `OrgNotAllowed`**
+until the owner allowlists each Endaoment org. From the `OWNER_ADDRESS` account
+(the multisig on mainnet):
+
+```solidity
+router.setOrgAllowed(<endaomentOrg>, true);   // repeat per org; false to revoke
+```
+
+Resolve each org's real Entity address from Endaoment's `OrgFundFactory` /
+integration API (entities are created per-org, not static) and confirm its
+on-chain `baseToken()` is the canonical Base USDC before allowlisting. Emits
+`OrgAllowanceUpdated(org, allowed)` for an on-chain audit trail.
+
+## 4. Wire the address into the frontend
 
 No code change. Set the deployed address in the app environment:
 

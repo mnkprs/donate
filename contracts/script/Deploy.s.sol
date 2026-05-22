@@ -25,14 +25,18 @@ contract Deploy is Script {
     function run() external returns (TransparentDonationRouter router) {
         address usdc = vm.envAddress("USDC_ADDRESS");
         address treasury = vm.envAddress("TREASURY_ADDRESS");
+        // Allowlist owner (H1). MUST be a multisig in production — it curates the
+        // set of Endaoment orgs donate() will forward to (see review M4).
+        address owner = vm.envAddress("OWNER_ADDRESS");
 
         vm.startBroadcast();
-        router = _deploy(usdc, treasury);
+        router = _deploy(usdc, treasury, owner);
         vm.stopBroadcast();
 
         console2.log("TransparentDonationRouter deployed at:", address(router));
         console2.log("  usdc:    ", address(router.usdc()));
         console2.log("  treasury:", router.treasury());
+        console2.log("  owner:   ", router.owner());
     }
 
     /// @notice Constructs the router. Constructor zero-address guards apply, so
@@ -40,11 +44,9 @@ contract Deploy is Script {
     ///         pointed at the zero address.
     /// @param usdc USDC token address on the target network.
     /// @param treasury Address that receives the platform fee.
+    /// @param owner Allowlist owner (the org-curation admin); a multisig in prod.
     /// @return router The deployed router instance.
-    function _deploy(address usdc, address treasury)
-        public
-        returns (TransparentDonationRouter router)
-    {
-        router = new TransparentDonationRouter(usdc, treasury);
+    function _deploy(address usdc, address treasury, address owner) public returns (TransparentDonationRouter router) {
+        router = new TransparentDonationRouter(usdc, treasury, owner);
     }
 }

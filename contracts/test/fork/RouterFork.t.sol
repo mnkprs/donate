@@ -51,7 +51,10 @@ contract RouterForkTest is Test {
         usdc = IERC20(BASE_USDC);
         treasury = makeAddr("treasury");
         donor = makeAddr("donor");
-        router = new TransparentDonationRouter(BASE_USDC, treasury);
+        // This test contract is the allowlist owner (H1); allowlist the real org
+        // so the gated donate() forwards on the fork instead of reverting.
+        router = new TransparentDonationRouter(BASE_USDC, treasury, address(this));
+        router.setOrgAllowed(endaomentOrg, true);
         forkReady = true;
     }
 
@@ -78,9 +81,7 @@ contract RouterForkTest is Test {
         vm.stopPrank();
 
         assertEq(
-            usdc.balanceOf(treasury) - treasuryBefore,
-            expectedFee,
-            "treasury should receive the 1% fee in real USDC"
+            usdc.balanceOf(treasury) - treasuryBefore, expectedFee, "treasury should receive the 1% fee in real USDC"
         );
         assertEq(
             usdc.balanceOf(endaomentOrg) - orgBefore,
@@ -88,13 +89,9 @@ contract RouterForkTest is Test {
             "org should receive the 99% net via its real donate()"
         );
         assertEq(usdc.balanceOf(donor), 0, "donor should be fully debited the gross");
+        assertEq(usdc.balanceOf(address(router)), 0, "router should retain no USDC after routing");
         assertEq(
-            usdc.balanceOf(address(router)), 0, "router should retain no USDC after routing"
-        );
-        assertEq(
-            usdc.allowance(address(router), endaomentOrg),
-            0,
-            "router should leave no residual allowance to the org"
+            usdc.allowance(address(router), endaomentOrg), 0, "router should leave no residual allowance to the org"
         );
     }
 }

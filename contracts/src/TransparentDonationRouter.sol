@@ -4,6 +4,7 @@ pragma solidity 0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IEndaomentEntity} from "./interfaces/IEndaomentEntity.sol";
 
 /// @title TransparentDonationRouter
@@ -14,7 +15,12 @@ import {IEndaomentEntity} from "./interfaces/IEndaomentEntity.sol";
 ///      construction live in runtime bytecode, so reads cost no SLOAD.
 ///      Task 2 GREEN: `previewSplit` fee math. Task 3 GREEN: `donate` happy
 ///      path via checks-effects-interactions, guarded by ReentrancyGuard.
-contract TransparentDonationRouter is ReentrancyGuard {
+///      H1 GREEN: `donate` only forwards to owner-allowlisted orgs, so a
+///      legitimate `DonationRouted` log can no longer be emitted for an
+///      attacker-controlled org. This adds an `Ownable` curation key the
+///      original immutable design omitted (review M4) — the owner MUST be a
+///      multisig in production.
+contract TransparentDonationRouter is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
     /// @notice Thrown when a constructor or `donate` argument that must be a
@@ -24,11 +30,19 @@ contract TransparentDonationRouter is ReentrancyGuard {
     /// @notice Thrown when a donation is attempted with a zero gross amount.
     error ZeroAmount();
 
+    /// @notice Thrown when `donate` targets an org the owner has not allowlisted.
+    /// @param org The rejected, un-vetted org address.
+    error OrgNotAllowed(address org);
+
     /// @notice USDC token the router pulls from donors. Set once at deploy.
     IERC20 public immutable usdc;
 
     /// @notice Treasury that receives the 1% platform fee. Set once at deploy.
     address public immutable treasury;
+
+    /// @notice Orgs the owner has vetted as legitimate Endaoment entities.
+    ///         `donate` forwards only to orgs mapped `true` here (H1).
+    mapping(address => bool) public allowedOrgs;
 
     /// @notice Platform fee in basis points (1%). Hardcoded, non-mutable.
     uint256 public constant FEE_BPS = 100;
@@ -45,17 +59,35 @@ contract TransparentDonationRouter is ReentrancyGuard {
     /// @param gross Total USDC pulled from the donor.
     /// @param fee Platform fee skimmed to the treasury.
     /// @param net Amount forwarded to `org` via its `donate()`.
-    event DonationRouted(
-        address indexed donor, address indexed org, uint256 gross, uint256 fee, uint256 net
-    );
+    event DonationRouted(address indexed donor, address indexed org, uint256 gross, uint256 fee, uint256 net);
+
+    /// @notice Emitted whenever the owner adds or removes an org from the
+    ///         allowlist, giving the curation set a fully on-chain audit trail.
+    /// @param org The org whose allowance changed.
+    /// @param allowed New state: `true` = donate-eligible, `false` = revoked.
+    event OrgAllowanceUpdated(address indexed org, bool allowed);
 
     /// @param _usdc USDC token address on the target network.
     /// @param _treasury Address that receives the platform fee.
-    constructor(address _usdc, address _treasury) {
+    /// @param _owner Allowlist curation owner; a multisig in production (M4).
+    ///        OZ `Ownable` reverts `OwnableInvalidOwner` if this is the zero
+    ///        address, so an unownable router can never be deployed.
+    constructor(address _usdc, address _treasury, address _owner) Ownable(_owner) {
         if (_usdc == address(0)) revert ZeroAddress();
         if (_treasury == address(0)) revert ZeroAddress();
         usdc = IERC20(_usdc);
         treasury = _treasury;
+    }
+
+    /// @notice Adds or removes an org from the donate allowlist. Owner-only.
+    /// @dev The zero address can never be allowlisted, so the curated set never
+    ///      holds a meaningless entry that `donate`'s own zero-check would catch.
+    /// @param org Endaoment org Entity to vet (non-zero).
+    /// @param allowed `true` to make it donate-eligible, `false` to revoke.
+    function setOrgAllowed(address org, bool allowed) external onlyOwner {
+        if (org == address(0)) revert ZeroAddress();
+        allowedOrgs[org] = allowed;
+        emit OrgAllowanceUpdated(org, allowed);
     }
 
     /// @notice Splits a gross USDC amount into the platform fee and the net
@@ -85,6 +117,11 @@ contract TransparentDonationRouter is ReentrancyGuard {
     function donate(address endaomentOrg, uint256 amount) external nonReentrant {
         // Checks
         if (endaomentOrg == address(0)) revert ZeroAddress();
+        // H1: forward only to owner-vetted orgs, before any funds move or the
+        // DonationRouted log is emitted — so the event can never legitimize an
+        // attacker-controlled recipient. After the zero-address check (a zero
+        // org still surfaces ZeroAddress), before the amount check.
+        if (!allowedOrgs[endaomentOrg]) revert OrgNotAllowed(endaomentOrg);
         if (amount == 0) revert ZeroAmount();
 
         // Effects
