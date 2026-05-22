@@ -6,13 +6,19 @@ import { colors } from "@/lib/tokens";
  * Renders 5 shimmer stage cards (mirroring the PizzaTracker layout) plus
  * skeleton placeholders for CharityCard and VerificationCard.
  *
- * - No spinner (`role="status"` / `role="progressbar"`) — shimmer-only.
+ * - No visual spinner / `role="progressbar"` — shimmer-only by design.
+ * - The root carries `role="status"` + `aria-live="polite"` so screen readers
+ *   announce the loading state and its resolution (`aria-busy` alone on a
+ *   non-live element has no defined AT behaviour).
  * - Uses the `euda-skel` keyframe from globals.css for the pulse animation.
  * - Every animated element carries `data-euda-motion` so the
  *   `prefers-reduced-motion` media-query rule in globals.css suppresses it.
  */
 
 const STAGE_COUNT = 5;
+
+/** Shimmer pulse animation shorthand, shared by every skeleton element. */
+const SKELETON_ANIMATION = "euda-skel 1.6s ease-in-out infinite";
 
 function SkeletonLine({
   width = "100%",
@@ -33,7 +39,7 @@ function SkeletonLine({
         height,
         borderRadius: radius,
         background: colors.hairline,
-        animation: "euda-skel 1.6s ease-in-out infinite",
+        animation: SKELETON_ANIMATION,
         ...style,
       }}
     />
@@ -68,7 +74,7 @@ function SkeletonStageCard() {
             height: 36,
             borderRadius: 9999,
             background: colors.hairline,
-            animation: "euda-skel 1.6s ease-in-out infinite",
+            animation: SKELETON_ANIMATION,
           }}
         />
       </div>
@@ -151,7 +157,7 @@ function SkeletonCharityCard() {
             height: 88,
             borderRadius: 12,
             background: colors.hairline,
-            animation: "euda-skel 1.6s ease-in-out infinite",
+            animation: SKELETON_ANIMATION,
           }}
         />
 
@@ -172,7 +178,7 @@ function SkeletonCharityCard() {
             height: 34,
             borderRadius: 9999,
             background: colors.hairline,
-            animation: "euda-skel 1.6s ease-in-out infinite",
+            animation: SKELETON_ANIMATION,
           }}
         />
       </div>
@@ -221,7 +227,7 @@ function SkeletonVerificationCard() {
                 borderRadius: 9999,
                 background: colors.hairline,
                 flexShrink: 0,
-                animation: "euda-skel 1.6s ease-in-out infinite",
+                animation: SKELETON_ANIMATION,
               }}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -237,7 +243,7 @@ function SkeletonVerificationCard() {
 
 export function ReceiptSkeleton() {
   return (
-    <div aria-label="Loading receipt" aria-busy="true">
+    <div role="status" aria-live="polite" aria-busy="true" aria-label="Loading receipt">
       {/* PizzaTracker skeleton — 5 stage cards */}
       <section
         style={{

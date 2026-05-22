@@ -20,10 +20,17 @@ describe("ReceiptSkeleton", () => {
     expect(html).toContain('data-testid="receipt-skeleton-verification"');
   });
 
-  test("contains no spinner role element", () => {
+  test("does not render a progressbar spinner", () => {
     const html = renderToString(<ReceiptSkeleton />);
-    expect(html).not.toContain('role="status"');
     expect(html).not.toContain('role="progressbar"');
+  });
+
+  test("announces the loading state to assistive tech via role=status", () => {
+    const html = renderToString(<ReceiptSkeleton />);
+    expect(html).toContain('role="status"');
+    expect(html).toContain('aria-live="polite"');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('aria-label="Loading receipt"');
   });
 
   test("each stage placeholder carries the shimmer animation marker", () => {

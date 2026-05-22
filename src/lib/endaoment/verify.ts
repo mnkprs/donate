@@ -106,8 +106,15 @@ function tryDecodeTransfer(
  *    - When `routerAddress` is unknown (env unset), falls back to the simple
  *      assertion: a single `Transfer(_, org, net)` must be present.
  *
- * Any mismatch returns `{ verified: false, reason }` — it never throws on a
- * mismatch so the receipt UI can always display a result.
+ * Any *mismatch* returns `{ verified: false, reason }` so the receipt UI can
+ * display a structured result. This function is NOT total, however — callers
+ * MUST handle thrown errors. It can throw on:
+ *   - RPC/transport failure from `client.getTransactionReceipt` (network down,
+ *     node error, tx not found).
+ *   - A log whose `topics[0]` matches `DonationRouted` but whose payload is
+ *     corrupt: `decodeDonationRoutedLog` throws rather than returning a
+ *     failure reason, because a matching topic that fails to decode indicates
+ *     malformed/spoofed data, not a normal verification mismatch.
  *
  * @param txid The transaction hash to look up.
  * @param charity The donation target — must carry a non-null `endaomentOrgAddress`.
@@ -172,8 +179,12 @@ export async function verifyDonation(
   // In both cases we exclude the Eudaimonia platform-fee leg, identified as a
   // router-out transfer where `value === routedArgs.fee && to !== expectedOrg`.
   // This is safe: the router emits exactly one such transfer per donation.
-  // Note: this discriminator could misfire if `routedArgs.fee` happened to equal
-  // `endaomentFee` — a pathological edge-case not present in any realistic config.
+  // Note: this discriminator misfires if `routedArgs.fee` happens to equal the
+  // Endaoment skim (`endaomentFee`) — the `value === fee` filter then drops both
+  // equal-valued legs, so `settlementSum` falls short of `net`. The net-side
+  // check below catches that, and the gross-side invariant (M4) enforced after
+  // it makes any residual misclassification fail loudly rather than silently
+  // returning a wrong fee breakdown.
   let endaomentFee = 0n;
 
   if (routerAddress !== undefined) {
@@ -207,6 +218,19 @@ export async function verifyDonation(
       (acc, t) => (getAddress(t.to) !== expectedOrg ? acc + t.value : acc),
       0n,
     );
+
+    // Gross-side invariant (M4): the full split must reconcile against gross —
+    // platform fee + Endaoment skim + the remainder to the org === gross. The
+    // remainder to the org is `settlementSum - endaomentFee`. A leg
+    // misclassification (or corrupt event) could leave the net side reconciling
+    // while the gross side does not; enforce it explicitly so we fail loudly
+    // instead of returning a wrong fee breakdown.
+    if (
+      routedArgs.fee + endaomentFee + (settlementSum - endaomentFee) !==
+      routedArgs.gross
+    ) {
+      return { verified: false, reason: "missing-transfer" };
+    }
   } else {
     // Router address is unknown — fall back to the simple single-transfer check:
     // a Transfer to the org for exactly net must be present.

@@ -72,7 +72,7 @@ export function PizzaTracker({
             letterSpacing: "-0.1px",
           }}
         >
-          Five stops · six seconds end-to-end · all final.
+          {`${stages.length} stops · six seconds end-to-end · all final.`}
         </div>
       </header>
 
@@ -102,6 +102,7 @@ export function PizzaTracker({
           <StageColumn
             key={stage.n}
             stage={stage}
+            index={i}
             isActive={activeIndex === i}
             minimal={minimal}
             txid={txid}
@@ -117,6 +118,7 @@ export function PizzaTracker({
 
 interface StageColumnProps {
   stage: Stage;
+  index: number;
   isActive: boolean;
   minimal: boolean;
   txid?: Hex;
@@ -127,6 +129,7 @@ interface StageColumnProps {
 
 function StageColumn({
   stage,
+  index,
   isActive,
   minimal,
   txid,
@@ -136,6 +139,9 @@ function StageColumn({
 }: StageColumnProps) {
   const isFee = stage.fee === true;
   const isInactive = stage.inactive === true;
+  // Stable id linking the focusable container to its fee tooltip so
+  // keyboard/AT users get the same financial detail mouse users see on hover.
+  const feeTipId = stage.feeOnHover ? `stage-${stage.n}-${index}-fee` : undefined;
 
   const cardStyle: CSSProperties = {
     background: minimal ? "transparent" : isActive ? colors.canvas : colors.surfaceMute,
@@ -159,9 +165,17 @@ function StageColumn({
 
   return (
     <div
+      tabIndex={0}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      style={{ position: "relative", cursor: "default" }}
+      onFocus={onEnter}
+      onBlur={onLeave}
+      aria-describedby={feeTipId}
+      style={{
+        position: "relative",
+        cursor: isInactive ? "default" : "pointer",
+        outline: "none",
+      }}
     >
       <StageNode isActive={isActive} isFee={isFee} isInactive={isInactive} />
       <div style={cardStyle}>
@@ -198,6 +212,7 @@ function StageColumn({
             isActive={isActive}
             txid={txid}
             chainId={chainId}
+            feeTipId={feeTipId}
           />
         )}
       </div>
@@ -342,9 +357,18 @@ interface StageBodyProps {
   isActive: boolean;
   txid?: Hex;
   chainId?: number;
+  /** Id linking the focusable stage to its fee tooltip via aria-describedby. */
+  feeTipId?: string;
 }
 
-function StageBody({ stage, isFee, isActive, txid, chainId }: StageBodyProps) {
+function StageBody({
+  stage,
+  isFee,
+  isActive,
+  txid,
+  chainId,
+  feeTipId,
+}: StageBodyProps) {
   const verifyHref =
     txid !== undefined && chainId !== undefined
       ? deriveLogUrl(txid, chainId)
@@ -410,6 +434,8 @@ function StageBody({ stage, isFee, isActive, txid, chainId }: StageBodyProps) {
         </div>
         {stage.feeOnHover && isActive && (
           <div
+            id={feeTipId}
+            role="tooltip"
             style={{
               marginTop: 4,
               padding: "6px 8px",

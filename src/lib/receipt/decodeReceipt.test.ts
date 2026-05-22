@@ -239,6 +239,86 @@ describe("decodeRouterReceipt — missing required transfer leg", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Test 6 — Gross-side invariant guard (M4)
+//
+// The leg-classification discriminator matches transfer VALUE against
+// `event.fee` to exclude the platform-fee leg. The decoder must enforce the
+// FULL split — eudaimoniaFee + endaomentFee + netToEntity === gross — not just
+// the net side. These tests prove the gross-side total is enforced.
+// ---------------------------------------------------------------------------
+
+describe("decodeRouterReceipt — gross-side invariant (M4)", () => {
+  it("rejects with 'missing-legs' when the legs do not sum to gross (corrupt event)", () => {
+    // Arrange: net-side reconciles (endaomentFee + netToEntity === eventNet) but
+    // the event's gross is inflated so eudaimoniaFee + endaomentFee + net != gross.
+    // The legacy net-only check would pass; the new gross-side guard must reject.
+    const BAD_GROSS = GROSS + 1n; // gross no longer equals fee + net
+    const customLogs: Log[] = [
+      makeTransferLog(DONOR, ROUTER_ADDRESS, BAD_GROSS, 0),
+      makeTransferLog(ROUTER_ADDRESS, EUDAIMONIA_TREASURY, EUDAIMONIA_FEE, 1),
+      makeTransferLog(ROUTER_ADDRESS, ENDAOMENT_TREASURY, ENDAOMENT_FEE, 2),
+      makeTransferLog(ROUTER_ADDRESS, ORG_ENTITY, NET_TO_ENTITY, 3),
+      makeDonationRoutedLog(
+        ROUTER_ADDRESS,
+        DONOR,
+        ORG_ENTITY,
+        BAD_GROSS,
+        EUDAIMONIA_FEE,
+        NET, // endaomentFee + netToEntity === NET still holds (net-side reconciles)
+        4,
+      ),
+    ];
+    const receipt = { ...MOCK_SEPOLIA_RECEIPT, logs: customLogs };
+
+    // Act
+    const result = decodeRouterReceipt(receipt, ROUTER_ADDRESS, ORG_ENTITY);
+
+    // Assert: gross-side invariant catches the inconsistency the net check missed.
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.reason).toBe("missing-legs");
+  });
+
+  it("still reconciles when the platform fee equals the endaoment skim (discriminator misfire is value-symmetric)", () => {
+    // Arrange: construct a synthetic receipt where eudaimoniaFee === endaomentFee.
+    // The value-based discriminator cannot tell the two legs apart, but because
+    // the values are equal, swapping their labels is a no-op for the sum — the
+    // gross-side invariant still holds and the decode succeeds with correct totals.
+    const EQUAL_FEE = 10_000n;
+    const equalGross = EQUAL_FEE + EQUAL_FEE + NET_TO_ENTITY; // fee + skim + net
+    const equalNet = equalGross - EQUAL_FEE; // = EQUAL_FEE + NET_TO_ENTITY
+    const customLogs: Log[] = [
+      makeTransferLog(DONOR, ROUTER_ADDRESS, equalGross, 0),
+      makeTransferLog(ROUTER_ADDRESS, EUDAIMONIA_TREASURY, EQUAL_FEE, 1),
+      makeTransferLog(ROUTER_ADDRESS, ENDAOMENT_TREASURY, EQUAL_FEE, 2),
+      makeTransferLog(ROUTER_ADDRESS, ORG_ENTITY, NET_TO_ENTITY, 3),
+      makeDonationRoutedLog(
+        ROUTER_ADDRESS,
+        DONOR,
+        ORG_ENTITY,
+        equalGross,
+        EQUAL_FEE,
+        equalNet,
+        4,
+      ),
+    ];
+    const receipt = { ...MOCK_SEPOLIA_RECEIPT, logs: customLogs };
+
+    // Act
+    const result = decodeRouterReceipt(receipt, ROUTER_ADDRESS, ORG_ENTITY);
+
+    // Assert: invariant holds — eudaimoniaFee + endaomentFee + netToEntity === gross.
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(
+      result.eudaimoniaFee + result.endaomentFee + result.netToEntity,
+    ).toBe(result.gross);
+    expect(result.gross).toBe(equalGross);
+    expect(result.netToEntity).toBe(NET_TO_ENTITY);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Invariant sanity check — fixture constants are self-consistent
 // ---------------------------------------------------------------------------
 

@@ -447,6 +447,107 @@ describe("verifyDonation", () => {
     });
   });
 
+  // -------------------------------------------------------------------------
+  // NEW (M4): Gross-side invariant guard
+  //
+  // The router branch classifies legs by matching transfer VALUE against
+  // routedArgs.fee. A defensive guard asserts the full split reconciles against
+  // gross: fee + endaomentFee + (settlementSum - endaomentFee) === gross. A
+  // corrupt event whose net side reconciles but whose gross does not must be
+  // rejected as missing-transfer.
+  // -------------------------------------------------------------------------
+
+  it("returns verified:false reason=missing-transfer when fee + net !== gross (gross-side invariant)", async () => {
+    // Arrange: settlement sums to net (so the net-side check passes), but the
+    // event's gross is inflated so fee + net !== gross. The new gross-side guard
+    // must reject this even though every per-leg amount is internally present.
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const BAD_GROSS = GROSS + 1n; // breaks fee + net === gross
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG,
+      NET, // settlementSum === net → net-side check passes
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      gross: BAD_GROSS,
+      fee: FEE,
+      net: NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([eudaimoniaFeeLog, entityReceiptLog, routedLog]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: gross-side guard fires.
+    expect(result).toEqual({ verified: false, reason: "missing-transfer" });
+  });
+
+  it("rejects with missing-transfer when the platform fee equals the endaoment skim (filter over-excludes both legs)", async () => {
+    // Arrange: eudaimoniaFee === endaomentFee. The settlement filter excludes
+    // EVERY router-out transfer whose value === fee && to !== org, so it drops
+    // BOTH equal-valued legs — the eudaimonia fee leg AND the endaoment skim leg.
+    // The endaoment skim is therefore missing from settlementSum, which no longer
+    // equals net, so the existing net-side check fails loudly. This proves the
+    // misfire is caught (it does not silently produce a wrong fee breakdown).
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const EQUAL_FEE = 1_000_000n; // platform fee
+    const SKIM = EQUAL_FEE; // endaoment skim equals the platform fee
+    const ENTITY_NET = 50_000_000n;
+    const EQ_NET = SKIM + ENTITY_NET; // settlement sum (if classified correctly)
+    const EQ_GROSS = EQUAL_FEE + EQ_NET;
+
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      EQUAL_FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const endaomentFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ENDAOMENT_TREASURY,
+      SKIM,
+      USDC_BASE_SEPOLIA,
+    );
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG,
+      ENTITY_NET,
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      gross: EQ_GROSS,
+      fee: EQUAL_FEE,
+      net: EQ_NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([
+      eudaimoniaFeeLog,
+      endaomentFeeLog,
+      entityReceiptLog,
+      routedLog,
+    ]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: misfire fails loudly rather than returning a wrong breakdown.
+    expect(result).toEqual({ verified: false, reason: "missing-transfer" });
+  });
+
   it("verifies an Entity with zero endaoment fee (endaomentFee === 0n)", async () => {
     // Arrange: Entity takes no protocol fee — only one settlement transfer:
     //   router → org entity for exactly NET.

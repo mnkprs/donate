@@ -200,6 +200,37 @@ describe("wrong-network", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Transition: not-found (invalid / non-hex txid)
+// ---------------------------------------------------------------------------
+
+describe("invalid txid", () => {
+  it("emits not-found synchronously for a non-hex txid and makes no RPC call", async () => {
+    // Arrange
+    const mockClient = createMockClient();
+    mockGetPublicClient.mockReturnValue(
+      mockClient as unknown as ReturnType<typeof getPublicClient>,
+    );
+    const { states, onState } = captureStates();
+    const controller = new AbortController();
+
+    // Act: pass a clearly non-hex txid
+    await runReceiptResolver({
+      txid: "not-a-hash",
+      chainId: FIXTURE_CHAIN_ID,
+      onState,
+      signal: controller.signal,
+    });
+
+    // Assert: not-found emitted, no client lookup attempted
+    expect(states).toContainEqual({
+      status: "not-found",
+      prefersReducedMotion: false,
+    });
+    expect(mockClient.getTransactionReceipt).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Transition: loading → ready (happy path)
 // ---------------------------------------------------------------------------
 

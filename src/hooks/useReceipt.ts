@@ -103,7 +103,8 @@ function readPrefersReducedMotion(): boolean {
 // ---------------------------------------------------------------------------
 
 export interface ResolverOptions {
-  txid: Hex;
+  /** Raw transaction id. Validated as hex inside the resolver. */
+  txid: string;
   /** Active chain ID. When omitted defaults to Base Sepolia. */
   chainId?: number;
   /** Called each time the state transitions. */
@@ -119,7 +120,7 @@ export interface ResolverOptions {
  * The `useReceipt` hook wraps this with `useEffect` + `AbortController`.
  */
 export async function runReceiptResolver(options: ResolverOptions): Promise<void> {
-  const { txid, chainId = baseSepolia.id, onState, signal } = options;
+  const { txid: rawTxid, chainId = baseSepolia.id, onState, signal } = options;
 
   const prefersReducedMotion = readPrefersReducedMotion();
 
@@ -128,6 +129,13 @@ export async function runReceiptResolver(options: ResolverOptions): Promise<void
     if (signal.aborted) return;
     onState(state);
   };
+
+  // --- Pre-check: txid must be a valid hex string ---
+  if (!isHex(rawTxid)) {
+    emit({ status: 'not-found', prefersReducedMotion });
+    return;
+  }
+  const txid: Hex = rawTxid;
 
   // --- Pre-check: supported network ---
   if (!(ROUTER_SUPPORTED_CHAIN_IDS as readonly number[]).includes(chainId)) {
@@ -388,11 +396,6 @@ export function useReceipt(txid: string, chainId?: number): ReceiptState {
   });
 
   useEffect(() => {
-    if (!isHex(txid)) {
-      setState({ status: 'not-found', prefersReducedMotion });
-      return;
-    }
-
     const controller = new AbortController();
 
     runReceiptResolver({

@@ -231,7 +231,18 @@ export function decodeRouterReceipt(
 
   // --- Step 3: Reconcile totals against the event ---------------------------
 
+  // Net-side: the Endaoment skim plus what reached the org must equal event.net.
   if (endaomentFee + netToEntity !== eventNet) {
+    return { ok: false, reason: "missing-legs" };
+  }
+
+  // Gross-side (M4): the FULL split must reconcile against gross. Because the
+  // leg classifier excludes the platform-fee leg by matching transfer VALUE
+  // against event.fee, a misclassification (or a corrupt event) could leave the
+  // net side reconciling while the gross side does not. Enforce the complete
+  // invariant so any such case fails loudly instead of returning a wrong
+  // breakdown:  eudaimoniaFee(=event.fee) + endaomentFee + netToEntity === gross.
+  if (eventFee + endaomentFee + netToEntity !== eventGross) {
     return { ok: false, reason: "missing-legs" };
   }
 
