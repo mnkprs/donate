@@ -236,4 +236,17 @@ describe("loadReceiptForMetadata", () => {
     const expected = (Number(NET_TO_ENTITY) / 1_000_000).toFixed(6);
     expect(result!.amountUsdc).toBe(expected);
   });
+
+  // -------------------------------------------------------------------------
+  // E6.1 — chainId is required; omitting it must throw, not silently Sepolia
+  // -------------------------------------------------------------------------
+
+  it("throws when chainId is missing (undefined) instead of silently defaulting to Sepolia", async () => {
+    // Bug E6.1: the old signature had `chainId = baseSepolia.id` which silently
+    // used Sepolia on mainnet. The fixed version must throw when no chainId is
+    // resolvable, to prevent wrong-network reads going undetected.
+    await expect(
+      loadReceiptForMetadata(FIXTURE_TX_HASH, undefined as unknown as number),
+    ).rejects.toThrow();
+  });
 });

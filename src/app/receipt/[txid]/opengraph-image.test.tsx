@@ -11,7 +11,7 @@
  *      invoked with a generic card.
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MockedFunction } from "vitest";
 
 // ---------------------------------------------------------------------------
@@ -45,6 +45,7 @@ vi.mock("@/lib/receipt/loadReceiptForMetadata", () => ({
 // Imports after mocking
 // ---------------------------------------------------------------------------
 
+import { base, baseSepolia } from "wagmi/chains";
 import { ImageResponse } from "next/og";
 import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
 import OgImage, { size, contentType } from "@/app/receipt/[txid]/opengraph-image";
@@ -231,5 +232,53 @@ describe("opengraph-image — error resilience", () => {
 
     expect(result).toBeDefined();
     expect(MockedImageResponse).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E6.1 — OG image passes correct chainId from NEXT_PUBLIC_CHAIN
+// ---------------------------------------------------------------------------
+
+describe("opengraph-image — E6.1 chainId resolution", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+    MockedImageResponse.mockClear();
+  });
+
+  it("passes base.id to loadReceiptForMetadata when NEXT_PUBLIC_CHAIN=base", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "base");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await OgImage({ params: Promise.resolve({ txid: TXID }) });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      base.id,
+    );
+  });
+
+  it("passes baseSepolia.id when NEXT_PUBLIC_CHAIN=base-sepolia", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "base-sepolia");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await OgImage({ params: Promise.resolve({ txid: TXID }) });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      baseSepolia.id,
+    );
+  });
+
+  it("passes baseSepolia.id when NEXT_PUBLIC_CHAIN is unset (empty string)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await OgImage({ params: Promise.resolve({ txid: TXID }) });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      baseSepolia.id,
+    );
   });
 });

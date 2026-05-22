@@ -21,9 +21,10 @@
 
 import { formatUnits } from "viem";
 import type { Address, Hex as ViemHex, Log } from "viem";
+import { base, baseSepolia } from "wagmi/chains";
 
 import type { Charity, EndaomentOrgMetadata } from "@/types/charity";
-import type { ReceiptBundle, ReceiptData, Hex } from "@/types/receipt";
+import type { ReceiptBundle, ReceiptData, Hex, Network } from "@/types/receipt";
 import { buildStages } from "@/lib/stages";
 import {
   decodeRouterReceipt,
@@ -147,6 +148,22 @@ function truncateTxHash(hash: string): string {
   return `${hash.slice(0, 6)}…${hash.slice(-4)}`;
 }
 
+/**
+ * Resolves a human-readable network label from a chain id.
+ *
+ * Matches against the explicit wagmi/chains constants so any future renaming
+ * of the id values stays in sync automatically. Returns `"Unknown"` (cast to
+ * `Network`) for unrecognised chain ids to avoid mislabelling.
+ */
+function resolveNetworkLabel(chainId: number): Network {
+  if (chainId === base.id) return "Base";
+  if (chainId === baseSepolia.id) return "Base Sepolia";
+  // Cast: "Unknown" is a valid display string but not yet in the Network union.
+  // This is intentional — the receipt UI will show "Unknown" rather than
+  // silently mislabelling an unrecognised chain as "Base Sepolia".
+  return "Unknown" as Network;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -209,8 +226,7 @@ export function buildReceiptBundle(
     amountUsdc: grossFormatted,
     date: dateStr,
     time: timeStr,
-    // chainId 84532 = Base Sepolia; 8453 = Base
-    network: input.chainId === 8453 ? "Base" : "Base Sepolia",
+    network: resolveNetworkLabel(input.chainId),
     txid,
     txidShort,
     block: blockFormatted,
