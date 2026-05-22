@@ -164,7 +164,7 @@ function SkeletonRows() {
             height: 12,
             borderRadius: 6,
             background: colors.hairlineMute,
-            animation: "euda-shimmer 1.4s ease-in-out infinite",
+            animation: "euda-skel 1.6s ease-in-out infinite",
           }}
         />
       ))}
