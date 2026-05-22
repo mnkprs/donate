@@ -1,0 +1,76 @@
+name: CI
+
+# Runs on every PR and on pushes to main. Two independent jobs mirror the
+# two halves of the repo: the Next.js frontend and the Foundry contracts.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a fast follow-up push doesn't
+# queue behind a stale run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (lint · types · unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `npm ci` installs from the committed package-lock.json for a
+      # reproducible tree. The postinstall chrome-launcher patch runs here too.
+      - name: Install dependencies
+        run: npm ci
+
+      # Advisory for now: the codebase carries a large pre-existing ESLint
+      # backlog. Surface issues without failing CI; tighten to blocking once
+      # the backlog is cleared.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # Vitest unit/component suite. E2E (Playwright) and Lighthouse a11y are
+      # intentionally excluded here — they need browsers and a running server,
+      # and belong in a heavier, separately gated workflow.
+      - name: Unit tests
+        run: npm test
+
+  contracts:
+    name: Contracts (forge build · test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      # Dependencies are vendored into lib/ at build time (not committed —
+      # see contracts/.gitignore). Remappings in remappings.txt expect these
+      # exact paths. Pin to tags here for reproducible builds.
+      - name: Vendor contract dependencies
+        run: |
+          git clone --depth 1 --branch v1.9.6 https://github.com/foundry-rs/forge-std lib/forge-std
+          git clone --depth 1 --branch v5.1.0 https://github.com/OpenZeppelin/openzeppelin-contracts lib/openzeppelin-contracts
+
+      - name: Build
+        run: forge build
+
+      # Fork tests (test/fork/*) self-skip via vm.skip when BASE_RPC_URL /
+      # ENDAOMENT_ORG are absent, so the full suite stays green without secrets.
+      - name: Test
+        run: forge test -vvv
