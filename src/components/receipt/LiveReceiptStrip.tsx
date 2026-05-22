@@ -115,7 +115,10 @@ function LiveReceiptBody({ status }: { status: LiveReceiptStatus }) {
   return (
     <>
       {status.donations.map((donation) => (
-        <ReceiptRow key={donation.txid} donation={donation} />
+        <ReceiptRow
+          key={`${donation.txid}-${donation.blockNumber.toString()}`}
+          donation={donation}
+        />
       ))}
     </>
   );
