@@ -15,6 +15,7 @@ export const TEST_ENV: ServerEnv = Object.freeze({
   ROUTER_ADDRESS_BASE_SEPOLIA: "0x1234567890aBcDeF1234567890AbCdEf12345678",
   USDC_CONTRACT_BASE_SEPOLIA: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
   NEXT_PUBLIC_CHAIN: "base-sepolia",
+  ENDAOMENT_API_URL: "https://api.endaoment.org",
 });
 
 export const VALID_INPUT: CreateSessionInput = Object.freeze({

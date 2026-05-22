@@ -36,8 +36,12 @@ export interface EndaomentOrgMetadata {
   mission: string;
   /** Logo URL, or null when the org has none. */
   logoUrl: string | null;
-  /** Mainnet (Base) org Entity address recorded with the snapshot. */
-  mainnetAddress: Address;
+  /**
+   * Mainnet (Base) org Entity address recorded with the snapshot.
+   * Null when the address has not been independently verified — callers
+   * must handle the nullable case (e.g. skip on-chain verification).
+   */
+  mainnetAddress: Address | null;
   /** ISO-8601 timestamp the snapshot row was captured, e.g. "2026-05-22". */
   capturedAt: string;
 }

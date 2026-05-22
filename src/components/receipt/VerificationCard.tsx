@@ -1,3 +1,4 @@
+import { EndaomentBadge } from "@/components/brand/EndaomentBadge";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { EyebrowLabel } from "@/components/ui/EyebrowLabel";
 import { Mono } from "@/components/ui/Mono";
@@ -10,13 +11,20 @@ interface VerificationCardProps {
   data: ReceiptData;
   /** Render the bottom fee disclosure strip. */
   showFeeStrip?: boolean;
+  /**
+   * BaseScan URL for the Endaoment org address, e.g.
+   * "https://basescan.org/address/0x…". Wired from `getCharity().baseScanUrl`
+   * by the receipt route. When omitted the VerifyLink falls back to "#".
+   */
+  baseScanUrl?: string;
 }
 
-export function VerificationCard({ data, showFeeStrip = true }: VerificationCardProps) {
+export function VerificationCard({ data, showFeeStrip = true, baseScanUrl }: VerificationCardProps) {
   return (
     <section style={{ maxWidth: 1240, margin: "0 auto", padding: "0 64px 56px" }}>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
         <EyebrowLabel>Proof</EyebrowLabel>
+        <EndaomentBadge size="sm" />
       </div>
       <div
         style={{
@@ -36,7 +44,7 @@ export function VerificationCard({ data, showFeeStrip = true }: VerificationCard
             <CopyButton value={data.txid} />
           </div>
           <div style={{ marginTop: 12 }}>
-            <VerifyLink label="Open on BaseScan ↗" />
+            <VerifyLink label="Open on BaseScan ↗" href={baseScanUrl ?? "#"} />
           </div>
         </div>
 
