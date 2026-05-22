@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { TrackMount } from "@/components/analytics/TrackMount";
 import { CampaignSummary } from "@/components/checkout/CampaignSummary";
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { CheckoutMesh } from "@/components/checkout/CheckoutMesh";
@@ -19,6 +20,7 @@ export default async function DonatePage({ params }: DonatePageProps) {
 
   return (
     <>
+      <TrackMount event={{ name: "donate_intent", campaignId: campaign.id }} />
       <CheckoutMesh />
       <NavBar />
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">

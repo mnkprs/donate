@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
+import { trackOnrampCompleted } from "@/lib/analytics/events";
 import { ProcessingScreen } from "@/components/processing/ProcessingScreen";
 import {
   buildLiveStages,
@@ -48,6 +49,19 @@ export function ProcessingClient({ view, initialStatus }: ProcessingClientProps)
 
   const status = data.status;
   const txHash = data.txHash;
+  const campaignId = data.campaignId;
+
+  // Fire `onramp_completed` exactly once when the session settles. The redirect
+  // effect below re-runs on every poll/render until navigation lands, so a ref
+  // guard prevents duplicate funnel events. Prop is PII-free: campaign slug
+  // only — never the session id or transaction hash.
+  const completedFiredRef = useRef(false);
+  useEffect(() => {
+    if (status === "settled" && !completedFiredRef.current) {
+      completedFiredRef.current = true;
+      trackOnrampCompleted(campaignId);
+    }
+  }, [status, campaignId]);
 
   useEffect(() => {
     if (status === "settled" && txHash) {

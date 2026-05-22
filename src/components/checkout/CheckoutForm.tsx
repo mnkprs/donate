@@ -1,7 +1,12 @@
 "use client";
 
-import { useReducer, type FormEvent } from "react";
+import { useReducer, useRef, type FormEvent } from "react";
 
+import {
+  amountBucket,
+  shouldTrackAmountEntered,
+  trackAmountEntered,
+} from "@/lib/analytics/events";
 import { AmountSelector } from "@/components/checkout/AmountSelector";
 import {
   INITIAL_FORM_STATE,
@@ -44,6 +49,24 @@ function errorMessage(error: unknown): string {
 export function CheckoutForm({ campaignId, onSubmit }: CheckoutFormProps) {
   const [state, dispatch] = useReducer(checkoutFormReducer, INITIAL_FORM_STATE);
 
+  // Debounce `amount_entered` to one event per selection session. Reset when
+  // the donor switches between preset chips and the custom input so a fresh
+  // custom entry can re-fire. Only a coarse bucket is sent — never raw cents.
+  const amountTrackedRef = useRef(false);
+
+  function handleAmountChange(cents: number): void {
+    dispatch({ type: "SET_AMOUNT", cents });
+    if (shouldTrackAmountEntered(cents, amountTrackedRef.current)) {
+      amountTrackedRef.current = true;
+      trackAmountEntered(campaignId, amountBucket(cents));
+    }
+  }
+
+  function handleCustomModeChange(custom: boolean): void {
+    amountTrackedRef.current = false;
+    dispatch({ type: "SET_CUSTOM_MODE", custom });
+  }
+
   const amountError = selectAmountError(state);
   const emailError = selectEmailError(state);
   const isSubmittable = selectIsSubmittable(state);
@@ -72,10 +95,8 @@ export function CheckoutForm({ campaignId, onSubmit }: CheckoutFormProps) {
         <AmountSelector
           valueCents={state.amountCents}
           customMode={state.customMode}
-          onValueChange={(cents) => dispatch({ type: "SET_AMOUNT", cents })}
-          onCustomModeChange={(custom) =>
-            dispatch({ type: "SET_CUSTOM_MODE", custom })
-          }
+          onValueChange={handleAmountChange}
+          onCustomModeChange={handleCustomModeChange}
           error={amountError}
         />
 
