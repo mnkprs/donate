@@ -58,6 +58,7 @@ const VERIFICATION_VERIFIED = {
   gross: BigInt("10000000"),
   fee: BigInt("150000"),
   net: BigInt("9850000"),
+  endaomentFee: BigInt("0"),
 };
 
 const VERIFICATION_FAILED = {

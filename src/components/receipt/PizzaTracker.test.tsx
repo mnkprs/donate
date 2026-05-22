@@ -1,5 +1,6 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, test } from "vitest";
+import { base, baseSepolia } from "wagmi/chains";
 
 import { PizzaTracker } from "@/components/receipt/PizzaTracker";
 import type { Stage } from "@/types/receipt";
@@ -134,5 +135,47 @@ describe("PizzaTracker", () => {
     expect(cardHtml).toContain("#eef2f6");
     // Minimal variant should not render those card borders.
     expect(minimalHtml).not.toContain("#eef2f6");
+  });
+});
+
+describe("PizzaTracker — per-stage Verify ↗ hrefs", () => {
+  const TX =
+    "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc123" as const;
+
+  test("without txid/chainId props all Verify links fall back to href='#'", () => {
+    const html = renderToString(<PizzaTracker stages={fixtureStages} />);
+    // Every VerifyLink should default to href="#" when no tx context is given.
+    // Active stages = 4; each must use href="#".
+    const hrefHash = (html.match(/href="#"/g) ?? []).length;
+    expect(hrefHash).toBeGreaterThanOrEqual(4);
+  });
+
+  test("with txid + base.id each active-stage Verify link points to basescan.org tx #eventlog", () => {
+    const html = renderToString(
+      <PizzaTracker stages={fixtureStages} txid={TX} chainId={base.id} />,
+    );
+    const expectedHref = `href="https://basescan.org/tx/${TX}#eventlog"`;
+    const matches = (html.match(new RegExp(expectedHref, "g")) ?? []).length;
+    // 4 active stages should each receive this href.
+    expect(matches).toBe(4);
+  });
+
+  test("with txid + baseSepolia.id each active-stage Verify link points to sepolia.basescan.org tx #eventlog", () => {
+    const html = renderToString(
+      <PizzaTracker stages={fixtureStages} txid={TX} chainId={baseSepolia.id} />,
+    );
+    const expectedHref = `href="https://sepolia.basescan.org/tx/${TX}#eventlog"`;
+    const matches = (html.match(new RegExp(expectedHref, "g")) ?? []).length;
+    expect(matches).toBe(4);
+  });
+
+  test("inactive stage never receives a Verify link regardless of txid prop", () => {
+    const inactiveOnly: Stage[] = [
+      { ...fixtureStages[3], inactive: true },
+    ];
+    const html = renderToString(
+      <PizzaTracker stages={inactiveOnly} txid={TX} chainId={base.id} />,
+    );
+    expect(html).not.toContain("Verify ↗");
   });
 });
