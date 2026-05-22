@@ -180,6 +180,11 @@ describe("decodeDonationRoutedLog", () => {
     });
     const data = encodeAbiParameters([{ type: "uint256" }], [GROSS]);
 
-    expect(() => decodeDonationRoutedLog({ topics, data })).toThrow();
+    // Assert on the signature-mismatch throw specifically: a bare `.toThrow()`
+    // would still pass if `strict` were dropped and the decoder silently
+    // returned a malformed result instead of rejecting the foreign log.
+    expect(() => decodeDonationRoutedLog({ topics, data })).toThrow(
+      /signature/i,
+    );
   });
 });
