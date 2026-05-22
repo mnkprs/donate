@@ -1,5 +1,5 @@
 import { renderToString } from "react-dom/server";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import type { MockedFunction } from "vitest";
 
 import ReceiptPage, { generateMetadata } from "@/app/receipt/[txid]/page";
@@ -35,6 +35,7 @@ vi.mock("@/lib/receipt/loadReceiptForMetadata", () => ({
 // Imports after mocking
 // ---------------------------------------------------------------------------
 
+import { base, baseSepolia } from "wagmi/chains";
 import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
 
 const mockedLoadReceiptForMetadata =
@@ -266,5 +267,61 @@ describe("generateMetadata (/receipt/[txid])", () => {
     });
 
     expect(metadata.openGraph?.images).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — E6.1: generateMetadata passes correct chainId from NEXT_PUBLIC_CHAIN
+// ---------------------------------------------------------------------------
+
+describe("generateMetadata — E6.1 chainId resolution", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.clearAllMocks();
+  });
+
+  test("passes base.id when NEXT_PUBLIC_CHAIN=base", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "base");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      base.id,
+    );
+  });
+
+  test("passes baseSepolia.id when NEXT_PUBLIC_CHAIN=base-sepolia", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "base-sepolia");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      baseSepolia.id,
+    );
+  });
+
+  test("passes baseSepolia.id when NEXT_PUBLIC_CHAIN is unset (empty string)", async () => {
+    vi.stubEnv("NEXT_PUBLIC_CHAIN", "");
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(mockedLoadReceiptForMetadata).toHaveBeenCalledWith(
+      TXID,
+      baseSepolia.id,
+    );
   });
 });

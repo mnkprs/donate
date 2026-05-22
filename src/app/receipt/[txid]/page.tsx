@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { base, baseSepolia } from "wagmi/chains";
 
 import { ReceiptView } from "@/components/receipt/ReceiptView";
 import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
@@ -31,8 +32,12 @@ export async function generateMetadata({
 }: ReceiptPageProps): Promise<Metadata> {
   const { txid } = await params;
 
+  const chainId =
+    process.env.NEXT_PUBLIC_CHAIN === "base" ? base.id : baseSepolia.id;
+
   const receipt = await loadReceiptForMetadata(
     txid as `0x${string}`,
+    chainId,
   );
 
   if (receipt) {

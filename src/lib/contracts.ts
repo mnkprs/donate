@@ -67,7 +67,12 @@ export function getRouterAddress(chainId: number): Address | undefined {
   if (!isSupportedChainId(chainId)) return undefined;
 
   const candidate = readRouterAddressEnv(chainId);
-  if (!candidate || !isAddress(candidate)) return undefined;
+  if (!candidate || !isAddress(candidate, { strict: true })) return undefined;
+
+  // The zero address is a valid EVM address but is never a deployed contract;
+  // treat it as "not configured" so a misconfigured env var degrades gracefully.
+  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+  if (candidate.toLowerCase() === ZERO_ADDRESS) return undefined;
 
   return candidate;
 }
@@ -98,12 +103,16 @@ export interface DonationRoutedArgs {
 /**
  * The raw log fields a decoder needs: the topic array and ABI-encoded data.
  *
- * `topics` mirrors viem's own log shape — an indexed arg topic may be a single
- * hash, an array (for hashed dynamic types), or `null` — so a viem `Log` or the
- * output of `encodeEventTopics` is accepted directly without a cast at callsites.
+ * `topics` is typed as `[Hex, ...Hex[]] | []` — exactly viem's own `Log.topics`
+ * shape (mutable tuple of 32-byte hashes, no nulls, no nested arrays). This
+ * matches `decodeEventLog`'s parameter type directly, so no cast is needed at
+ * the decode callsite. Callers building synthetic logs from `encodeEventTopics`
+ * (which returns a wider `(Hex | Hex[] | null)[]`) MUST narrow to this type
+ * before constructing a `RawEventLog` — the cast belongs at the construction
+ * site, not inside the decoder.
  */
 export interface RawEventLog {
-  topics: readonly (Hex | readonly Hex[] | null)[];
+  topics: [Hex, ...Hex[]] | [];
   data: Hex;
 }
 
@@ -122,7 +131,7 @@ export function decodeDonationRoutedLog(log: RawEventLog): DonationRoutedArgs {
   const { args } = decodeEventLog({
     abi: [DONATION_ROUTED_EVENT],
     eventName: "DonationRouted",
-    topics: log.topics as [Hex, ...Hex[]],
+    topics: log.topics,
     data: log.data,
     strict: true,
   });

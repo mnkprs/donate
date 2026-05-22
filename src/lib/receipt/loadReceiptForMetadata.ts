@@ -16,7 +16,6 @@ import {
   type Address,
   type Log,
 } from "viem";
-import { baseSepolia } from "wagmi/chains";
 
 import { CAMPAIGNS } from "@/lib/campaigns";
 import {
@@ -49,8 +48,6 @@ export interface ReceiptMetadata {
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-const DEFAULT_CHAIN_ID = baseSepolia.id;
 
 const DONATION_ROUTED_TOPIC = toEventSelector(
   DONATION_ROUTED_EVENT,
@@ -109,16 +106,26 @@ function findCharityNameByOrgAddress(
  * shape needed for OG metadata generation.
  *
  * @param txid    Transaction hash (hex string).
- * @param chainId Active chain id; defaults to Base Sepolia.
+ * @param chainId Active chain id — required. Callers must resolve this from
+ *                `NEXT_PUBLIC_CHAIN` (e.g. `process.env.NEXT_PUBLIC_CHAIN === "base"
+ *                ? base.id : baseSepolia.id`). Throws if not a finite number so
+ *                misconfigured deployments fail loudly instead of silently reading
+ *                the wrong network.
  * @param map     Org-address map (injectable for tests). Defaults to the
  *                production map (intentionally sparse until E5.1 lands).
  * @returns `ReceiptMetadata` on success, `null` on any failure.
+ * @throws When `chainId` is not a finite number (misconfigured deployment guard).
  */
 export async function loadReceiptForMetadata(
   txid: `0x${string}`,
-  chainId: number = DEFAULT_CHAIN_ID,
+  chainId: number,
   map: OrgAddressMap = ENDAOMENT_ORG_ADDRESSES,
 ): Promise<ReceiptMetadata | null> {
+  if (typeof chainId !== "number" || !Number.isFinite(chainId)) {
+    throw new Error(
+      `loadReceiptForMetadata: chainId is required and must be a finite number, got ${String(chainId)}`,
+    );
+  }
   try {
     // --- 1. Resolve router address (fails fast if not configured) -----------
     const routerAddress = getRouterAddress(chainId);

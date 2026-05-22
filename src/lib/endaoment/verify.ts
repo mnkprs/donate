@@ -31,9 +31,15 @@ const ERC20_TRANSFER_TOPIC = toEventHash(ERC20_TRANSFER_EVENT);
 
 /**
  * A minimal raw log shape: what we need from a viem `Log` to decode events.
+ *
+ * `topics` matches viem's `Log.topics` exactly — `[Hex, ...Hex[]] | []`. The
+ * cast `receipt.logs as RawLog[]` in `verifyDonation` is safe because
+ * `getTransactionReceipt` returns `Log<bigint, number, false>[]`, whose
+ * `topics` field resolves to `[Hex, ...Hex[]] | []` (viem's untyped Log
+ * fallback). This interface picks only the three fields we consume.
  */
 interface RawLog {
-  topics: readonly (Hex | null)[];
+  topics: [Hex, ...Hex[]] | [];
   data: Hex;
   address: Address;
 }
@@ -76,7 +82,7 @@ function tryDecodeTransfer(
     const { args } = decodeEventLog({
       abi: [ERC20_TRANSFER_EVENT],
       eventName: "Transfer",
-      topics: log.topics as [Hex, ...Hex[]],
+      topics: log.topics,
       data: log.data,
       strict: true,
     });

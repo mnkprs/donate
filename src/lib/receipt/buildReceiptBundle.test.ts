@@ -349,6 +349,57 @@ describe("buildReceiptBundle", () => {
   });
 
   // -------------------------------------------------------------------------
+  // E6.2 — network label uses explicit chain id constants, not magic numbers
+  // -------------------------------------------------------------------------
+
+  describe("E6.2 — data.network label", () => {
+    it("labels Base mainnet (8453) as 'Base'", () => {
+      const bundle = buildReceiptBundle({
+        receipt: MOCK_SEPOLIA_RECEIPT,
+        routerAddress: ROUTER_ADDRESS,
+        orgAddress: ORG_ENTITY,
+        chainId: 8453,
+        txid: MOCK_SEPOLIA_RECEIPT.transactionHash,
+        charity: STUB_CHARITY,
+        orgMetadata: STUB_ORG_METADATA,
+        block: STUB_BLOCK,
+        confirmations: FIXTURE_CONFIRMATIONS,
+      });
+      expect(bundle.data.network).toBe("Base");
+    });
+
+    it("labels Base Sepolia (84532) as 'Base Sepolia'", () => {
+      const bundle = buildReceiptBundle({
+        receipt: MOCK_SEPOLIA_RECEIPT,
+        routerAddress: ROUTER_ADDRESS,
+        orgAddress: ORG_ENTITY,
+        chainId: 84532,
+        txid: MOCK_SEPOLIA_RECEIPT.transactionHash,
+        charity: STUB_CHARITY,
+        orgMetadata: STUB_ORG_METADATA,
+        block: STUB_BLOCK,
+        confirmations: FIXTURE_CONFIRMATIONS,
+      });
+      expect(bundle.data.network).toBe("Base Sepolia");
+    });
+
+    it("labels any other chain id as 'Unknown' instead of mislabeling as 'Base Sepolia'", () => {
+      const bundle = buildReceiptBundle({
+        receipt: MOCK_SEPOLIA_RECEIPT,
+        routerAddress: ROUTER_ADDRESS,
+        orgAddress: ORG_ENTITY,
+        chainId: 1, // Ethereum mainnet — neither Base nor Base Sepolia
+        txid: MOCK_SEPOLIA_RECEIPT.transactionHash,
+        charity: STUB_CHARITY,
+        orgMetadata: STUB_ORG_METADATA,
+        block: STUB_BLOCK,
+        confirmations: FIXTURE_CONFIRMATIONS,
+      });
+      expect(bundle.data.network).toBe("Unknown");
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // txid field mapping
   // -------------------------------------------------------------------------
 

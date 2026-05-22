@@ -9,6 +9,7 @@ import {
   toBytes,
   toEventHash,
   type Address,
+  type Hex,
 } from "viem";
 import { base, baseSepolia } from "wagmi/chains";
 import {
@@ -90,6 +91,16 @@ describe("getRouterAddress", () => {
     vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE", "not-an-address");
     expect(getRouterAddress(base.id)).toBeUndefined();
   });
+
+  it("returns undefined when the env var is the zero address", () => {
+    // M2: isAddress("0x000...0") returns true, so the zero address was previously
+    // accepted. Production must reject it per .env.local.example.
+    vi.stubEnv(
+      "NEXT_PUBLIC_ROUTER_ADDRESS_BASE",
+      "0x0000000000000000000000000000000000000000",
+    );
+    expect(getRouterAddress(base.id)).toBeUndefined();
+  });
 });
 
 describe("decodeDonationRoutedLog", () => {
@@ -125,11 +136,17 @@ describe("decodeDonationRoutedLog", () => {
       net: NET,
     },
   ) => ({
+    // encodeEventTopics returns `[Hex, ...(Hex | Hex[] | null)[]]` — wider than
+    // RawEventLog.topics because it supports null/array slots for unfiltered
+    // filter topics. In a real DonationRouted log every indexed slot is a padded
+    // address (32 bytes), so null/Hex[] never appear at runtime. The cast to
+    // `[Hex, ...Hex[]]` is sound here: both indexed args (donor, org) are always
+    // provided, so encodeEventTopics never emits nulls for this call.
     topics: encodeEventTopics({
       abi: [DONATION_ROUTED_EVENT],
       eventName: "DonationRouted",
       args: { donor: args.donor, org: args.org },
-    }),
+    }) as [Hex, ...Hex[]],
     data: encodeAbiParameters(UINT256_TRIPLE, [args.gross, args.fee, args.net]),
   });
 
@@ -173,11 +190,13 @@ describe("decodeDonationRoutedLog", () => {
     const foreignEvent = parseAbiItem(
       "event Transfer(address indexed from, address indexed to, uint256 value)",
     );
+    // encodeEventTopics returns (Hex | Hex[] | null)[] but Transfer's indexed
+    // args (from, to) are always fully provided — no null slots. Cast is sound.
     const topics = encodeEventTopics({
       abi: [foreignEvent],
       eventName: "Transfer",
       args: { from: DONOR, to: ORG },
-    });
+    }) as [Hex, ...Hex[]];
     const data = encodeAbiParameters([{ type: "uint256" }], [GROSS]);
 
     // Assert on the signature-mismatch throw specifically: a bare `.toThrow()`
