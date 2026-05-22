@@ -6,20 +6,32 @@ import { EyebrowLabel } from "@/components/ui/EyebrowLabel";
 import { Mono } from "@/components/ui/Mono";
 import { Num } from "@/components/ui/Num";
 import { VerifyLink } from "@/components/ui/VerifyLink";
+import { deriveLogUrl } from "@/lib/explorer";
 import { colors } from "@/lib/tokens";
-import type { Stage } from "@/types/receipt";
+import type { Hex, Stage } from "@/types/receipt";
 
 type TrackerVariant = "card" | "minimal";
 
 interface PizzaTrackerProps {
   stages: Stage[];
   variant?: TrackerVariant;
+  /** Full transaction hash — when provided, each active stage's Verify link
+   *  deep-links to the tx's event log on BaseScan. */
+  txid?: Hex;
+  /** Chain id (e.g. `base.id` or `baseSepolia.id`) — required alongside
+   *  `txid` to construct the correct explorer URL. */
+  chainId?: number;
 }
 
 const INACTIVE_COPY =
   "Future Eudaimonia donations will route a 1% platform fee here. This receipt is for an existing Endaoment donation, so no Eudaimonia fee was charged.";
 
-export function PizzaTracker({ stages, variant = "card" }: PizzaTrackerProps) {
+export function PizzaTracker({
+  stages,
+  variant = "card",
+  txid,
+  chainId,
+}: PizzaTrackerProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const minimal = variant === "minimal";
 
@@ -60,7 +72,7 @@ export function PizzaTracker({ stages, variant = "card" }: PizzaTrackerProps) {
             letterSpacing: "-0.1px",
           }}
         >
-          Five stops · six seconds end-to-end · all final.
+          {`${stages.length} stops · six seconds end-to-end · all final.`}
         </div>
       </header>
 
@@ -90,8 +102,11 @@ export function PizzaTracker({ stages, variant = "card" }: PizzaTrackerProps) {
           <StageColumn
             key={stage.n}
             stage={stage}
+            index={i}
             isActive={activeIndex === i}
             minimal={minimal}
+            txid={txid}
+            chainId={chainId}
             onEnter={() => !stage.inactive && setActiveIndex(i)}
             onLeave={() => setActiveIndex(null)}
           />
@@ -103,21 +118,30 @@ export function PizzaTracker({ stages, variant = "card" }: PizzaTrackerProps) {
 
 interface StageColumnProps {
   stage: Stage;
+  index: number;
   isActive: boolean;
   minimal: boolean;
+  txid?: Hex;
+  chainId?: number;
   onEnter: () => void;
   onLeave: () => void;
 }
 
 function StageColumn({
   stage,
+  index,
   isActive,
   minimal,
+  txid,
+  chainId,
   onEnter,
   onLeave,
 }: StageColumnProps) {
   const isFee = stage.fee === true;
   const isInactive = stage.inactive === true;
+  // Stable id linking the focusable container to its fee tooltip so
+  // keyboard/AT users get the same financial detail mouse users see on hover.
+  const feeTipId = stage.feeOnHover ? `stage-${stage.n}-${index}-fee` : undefined;
 
   const cardStyle: CSSProperties = {
     background: minimal ? "transparent" : isActive ? colors.canvas : colors.surfaceMute,
@@ -141,9 +165,17 @@ function StageColumn({
 
   return (
     <div
+      tabIndex={0}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      style={{ position: "relative", cursor: "default" }}
+      onFocus={onEnter}
+      onBlur={onLeave}
+      aria-describedby={feeTipId}
+      style={{
+        position: "relative",
+        cursor: isInactive ? "default" : "pointer",
+        outline: "none",
+      }}
     >
       <StageNode isActive={isActive} isFee={isFee} isInactive={isInactive} />
       <div style={cardStyle}>
@@ -174,7 +206,14 @@ function StageColumn({
             {INACTIVE_COPY}
           </p>
         ) : (
-          <StageBody stage={stage} isFee={isFee} isActive={isActive} />
+          <StageBody
+            stage={stage}
+            isFee={isFee}
+            isActive={isActive}
+            txid={txid}
+            chainId={chainId}
+            feeTipId={feeTipId}
+          />
         )}
       </div>
     </div>
@@ -316,9 +355,25 @@ interface StageBodyProps {
   stage: Stage;
   isFee: boolean;
   isActive: boolean;
+  txid?: Hex;
+  chainId?: number;
+  /** Id linking the focusable stage to its fee tooltip via aria-describedby. */
+  feeTipId?: string;
 }
 
-function StageBody({ stage, isFee, isActive }: StageBodyProps) {
+function StageBody({
+  stage,
+  isFee,
+  isActive,
+  txid,
+  chainId,
+  feeTipId,
+}: StageBodyProps) {
+  const verifyHref =
+    txid !== undefined && chainId !== undefined
+      ? deriveLogUrl(txid, chainId)
+      : undefined;
+
   return (
     <>
       <div
@@ -379,6 +434,8 @@ function StageBody({ stage, isFee, isActive }: StageBodyProps) {
         </div>
         {stage.feeOnHover && isActive && (
           <div
+            id={feeTipId}
+            role="tooltip"
             style={{
               marginTop: 4,
               padding: "6px 8px",
@@ -400,7 +457,7 @@ function StageBody({ stage, isFee, isActive }: StageBodyProps) {
       </div>
 
       <div style={{ marginTop: 12 }}>
-        <VerifyLink label="Verify ↗" />
+        <VerifyLink label="Verify ↗" href={verifyHref} />
       </div>
     </>
   );

@@ -1,240 +1,270 @@
 import { renderToString } from "react-dom/server";
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import type { MockedFunction } from "vitest";
 
-import ReceiptPage from "@/app/receipt/[txid]/page";
+import ReceiptPage, { generateMetadata } from "@/app/receipt/[txid]/page";
 
 // ---------------------------------------------------------------------------
-// Module mocks — must be declared before any imports that pull the modules
+// Module mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/endaoment/registry", () => ({
-  getCharity: vi.fn(),
+/**
+ * Mock ReceiptView so the server shell test does not need wagmi/viem
+ * infrastructure. The stub renders a marker element containing the txid
+ * so we can assert the shell parsed the route param correctly.
+ */
+vi.mock("@/components/receipt/ReceiptView", () => ({
+  ReceiptView: ({ txid, chainId }: { txid: string; chainId?: number }) => (
+    <div
+      data-testid="receipt-view-stub"
+      data-txid={txid}
+      data-chain-id={chainId ?? ""}
+    />
+  ),
 }));
 
-vi.mock("@/lib/endaoment/metadata", () => ({
-  resolveOrgMetadata: vi.fn(),
+/**
+ * Mock the server-side receipt helper so generateMetadata tests do not
+ * need a real viem client or network. The mock is hoisted and set per-test.
+ */
+vi.mock("@/lib/receipt/loadReceiptForMetadata", () => ({
+  loadReceiptForMetadata: vi.fn(),
 }));
 
-vi.mock("@/lib/endaoment/verify", () => ({
-  verifyDonation: vi.fn(),
-}));
-
 // ---------------------------------------------------------------------------
-// Import mocked modules for type-safe spy access
+// Imports after mocking
 // ---------------------------------------------------------------------------
 
-import { getCharity } from "@/lib/endaoment/registry";
-import { resolveOrgMetadata } from "@/lib/endaoment/metadata";
-import { verifyDonation } from "@/lib/endaoment/verify";
-import type { Charity } from "@/types/charity";
+import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
+
+const mockedLoadReceiptForMetadata =
+  loadReceiptForMetadata as MockedFunction<typeof loadReceiptForMetadata>;
 
 // ---------------------------------------------------------------------------
-// Fixtures
+// Constants
 // ---------------------------------------------------------------------------
 
 const TXID = "0xabc1230000000000000000000000000000000000000000000000000000000def" as const;
-const CHAIN_ID = 8453; // base.id
 
-const CHARITY_FIXTURE: Charity = {
-  id: "pcrf",
-  name: "Palestine Children's Relief Fund",
-  ein: "95-4115109",
-  endaomentOrgAddress: "0xOrgAddr0000000000000000000000000000000001",
-  baseScanUrl: "https://basescan.org/address/0xOrgAddr0000000000000000000000000000000001",
-};
-
-const METADATA_FIXTURE = {
-  name: "Palestine Children's Relief Fund",
-  ein: "95-4115109",
-  mission: "Providing medical care to children in the Middle East.",
-  logoUrl: null,
-  mainnetAddress: null,
-  capturedAt: "2026-05-22",
-};
-
-const VERIFICATION_VERIFIED = {
-  verified: true as const,
-  org: "0xOrgAddr0000000000000000000000000000000001" as `0x${string}`,
-  gross: BigInt("10000000"),
-  fee: BigInt("150000"),
-  net: BigInt("9850000"),
-};
-
-const VERIFICATION_FAILED = {
-  verified: false as const,
-  reason: "no-routed-log" as const,
-};
+const RESOLVED_RECEIPT = {
+  charityName: "Palestine Children's Relief Fund",
+  amountUsdc: "0.975150",
+  verified: true,
+} as const;
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helper
 // ---------------------------------------------------------------------------
 
-function paramsFor(txid: string): Promise<{ txid: string }> {
-  return Promise.resolve({ txid });
-}
-
-function searchParamsFor(campaign: string, chain?: number): Promise<Record<string, string>> {
-  const sp: Record<string, string> = { campaign };
-  if (chain !== undefined) sp.chain = String(chain);
-  return Promise.resolve(sp);
-}
-
-async function renderReceiptPage(
-  txid: string,
-  campaign: string,
-  chain?: number,
-): Promise<string> {
+async function renderShell(txid: string): Promise<string> {
   const element = await ReceiptPage({
-    params: paramsFor(txid),
-    searchParams: searchParamsFor(campaign, chain),
+    params: Promise.resolve({ txid }),
+    searchParams: Promise.resolve({}),
   });
   return renderToString(element);
 }
 
 // ---------------------------------------------------------------------------
-// Tests
+// Tests — server shell (Task 7, kept green)
 // ---------------------------------------------------------------------------
 
-describe("ReceiptPage (/receipt/[txid])", () => {
-  beforeEach(() => {
-    vi.mocked(getCharity).mockReturnValue(CHARITY_FIXTURE);
-    vi.mocked(resolveOrgMetadata).mockResolvedValue(METADATA_FIXTURE);
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_VERIFIED);
+describe("ReceiptPage server shell (/receipt/[txid])", () => {
+  // -------------------------------------------------------------------------
+  // Core: shell renders ReceiptView with the parsed txid
+  // -------------------------------------------------------------------------
+
+  test("renders ReceiptView stub with the parsed txid from route params", async () => {
+    const html = await renderShell(TXID);
+    expect(html).toContain("receipt-view-stub");
+    expect(html).toContain(TXID);
+  });
+
+  test("parsed txid is forwarded as the txid prop of ReceiptView", async () => {
+    const html = await renderShell(TXID);
+    // data-txid attribute carries the parsed param value
+    expect(html).toContain(`data-txid="${TXID}"`);
+  });
+
+  test("renders with a different txid correctly", async () => {
+    const otherTxid = "0xdeadbeef00000000000000000000000000000000000000000000000000000001";
+    const html = await renderShell(otherTxid);
+    expect(html).toContain(`data-txid="${otherTxid}"`);
   });
 
   // -------------------------------------------------------------------------
-  // (a) Verified transaction
+  // Shell structure — does not crash, does not call server-side data loaders
   // -------------------------------------------------------------------------
 
-  test("verified tx: renders the charity name", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Palestine Children&#x27;s Relief Fund");
+  test("does not throw for a well-formed txid", async () => {
+    await expect(renderShell(TXID)).resolves.toBeDefined();
   });
 
-  test('verified tx: renders "Verified by Endaoment" badge', async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Verified by Endaoment");
+  test("does not throw for an arbitrary string txid", async () => {
+    await expect(renderShell("not-a-hex-hash")).resolves.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — generateMetadata (Task 8)
+// ---------------------------------------------------------------------------
+
+describe("generateMetadata (/receipt/[txid])", () => {
+  // -------------------------------------------------------------------------
+  // Resolved path — helper returns charity + amount
+  // -------------------------------------------------------------------------
+
+  test("includes charity name in og:title when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const title =
+      typeof metadata.title === "string"
+        ? metadata.title
+        : (metadata.title as { default?: string })?.default ?? "";
+
+    expect(title).toContain("Palestine Children's Relief Fund");
   });
 
-  test("verified tx: renders on-chain gross amount (USDC base units formatted)", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    // gross = 10_000_000 micro-USDC = 10.000000 USDC
-    expect(html).toContain("10.000000");
+  test("includes 'Eudaimonia' in the title when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const title =
+      typeof metadata.title === "string"
+        ? metadata.title
+        : (metadata.title as { default?: string })?.default ?? "";
+
+    expect(title).toContain("Eudaimonia");
   });
 
-  test("verified tx: renders on-chain fee amount", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    // fee = 150_000 micro-USDC = 0.150000 USDC
-    expect(html).toContain("0.150000");
-  });
+  test("sets openGraph title containing charity name when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
 
-  test("verified tx: renders on-chain net amount", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    // net = 9_850_000 micro-USDC = 9.850000 USDC
-    expect(html).toContain("9.850000");
-  });
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
 
-  test("verified tx: renders mission text from metadata", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Providing medical care to children in the Middle East.");
-  });
-
-  test("verified tx: renders txid in the page", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    // txid rendered in the on-chain amounts section data-txid attribute or text
-    expect(html).toContain("0xabc123");
-  });
-
-  test("verified tx: renders BaseScan link", async () => {
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("basescan.org/address/");
-  });
-
-  test("verified tx: calls getCharity with correct id and chainId", async () => {
-    await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(vi.mocked(getCharity)).toHaveBeenCalledWith("pcrf", CHAIN_ID);
-  });
-
-  test("verified tx: calls verifyDonation with txid and charity", async () => {
-    await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(vi.mocked(verifyDonation)).toHaveBeenCalledWith(
-      TXID,
-      CHARITY_FIXTURE,
-      CHAIN_ID,
+    const ogTitle = metadata.openGraph?.title;
+    expect(typeof ogTitle === "string" ? ogTitle : "").toContain(
+      "Palestine Children's Relief Fund",
     );
   });
 
-  // -------------------------------------------------------------------------
-  // (b) Unverified transaction — verified:false
-  // -------------------------------------------------------------------------
+  test("sets openGraph description containing the USDC amount when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
 
-  test("unverified tx: does NOT crash — renders without throwing", async () => {
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_FAILED);
-    await expect(renderReceiptPage(TXID, "pcrf", CHAIN_ID)).resolves.toBeDefined();
-  });
-
-  test("unverified tx: renders charity name (page is still useful)", async () => {
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_FAILED);
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Palestine Children&#x27;s Relief Fund");
-  });
-
-  test("unverified tx: renders explicit unverified message", async () => {
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_FAILED);
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Unverified");
-  });
-
-  test("unverified tx: renders the failure reason", async () => {
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_FAILED);
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("no-routed-log");
-  });
-
-  test("unverified tx: does NOT render on-chain amounts section", async () => {
-    vi.mocked(verifyDonation).mockResolvedValue(VERIFICATION_FAILED);
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    // On-chain amounts dl is only rendered in the verified path
-    expect(html).not.toContain("Gross (USDC)");
-  });
-
-  // -------------------------------------------------------------------------
-  // (c) Null org address → treated as unverified
-  // -------------------------------------------------------------------------
-
-  test("null org address: renders unverified state, no crash", async () => {
-    const charityNoAddr: Charity = { ...CHARITY_FIXTURE, endaomentOrgAddress: null, baseScanUrl: null };
-    vi.mocked(getCharity).mockReturnValue(charityNoAddr);
-    vi.mocked(verifyDonation).mockResolvedValue({
-      verified: false,
-      reason: "no-org-address-for-chain",
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
     });
-    const html = await renderReceiptPage(TXID, "pcrf", CHAIN_ID);
-    expect(html).toContain("Unverified");
-    expect(html).toContain("Palestine Children&#x27;s Relief Fund");
+
+    const ogDesc = metadata.openGraph?.description ?? "";
+    expect(ogDesc).toContain("0.975150");
   });
 
-  // -------------------------------------------------------------------------
-  // (d) Missing campaign param → renders gracefully (no crash, shows error)
-  // -------------------------------------------------------------------------
+  test("sets twitter card to summary_large_image when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
 
-  test("unknown campaign slug: renders gracefully without throwing", async () => {
-    vi.mocked(getCharity).mockReturnValue(undefined);
-    const element = await ReceiptPage({
-      params: paramsFor(TXID),
-      searchParams: Promise.resolve({ campaign: "does-not-exist" }),
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
     });
-    const html = renderToString(element);
-    expect(html).toBeDefined();
-    expect(html).toContain("not found");
+
+    const twitter = metadata.twitter as Record<string, unknown> | undefined;
+    expect(twitter?.card).toBe("summary_large_image");
+  });
+
+  test("sets twitter title containing charity name when helper resolves", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const twitter = metadata.twitter as Record<string, unknown> | undefined;
+    const twitterTitle = (twitter?.title ?? "") as string;
+    expect(twitterTitle).toContain("Palestine Children's Relief Fund");
   });
 
   // -------------------------------------------------------------------------
-  // (e) Default chain — no chain searchParam defaults to Base mainnet
+  // Fallback path — helper returns null
   // -------------------------------------------------------------------------
 
-  test("defaults to base mainnet (8453) when chain param is absent", async () => {
-    await renderReceiptPage(TXID, "pcrf");
-    expect(vi.mocked(getCharity)).toHaveBeenCalledWith("pcrf", 8453);
+  test("returns valid metadata (does not throw) when helper returns null", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    await expect(
+      generateMetadata({
+        params: Promise.resolve({ txid: TXID }),
+        searchParams: Promise.resolve({}),
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  test("uses generic fallback title when helper returns null", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const title =
+      typeof metadata.title === "string"
+        ? metadata.title
+        : (metadata.title as { default?: string })?.default ?? "";
+
+    expect(title).toContain("Eudaimonia");
+    expect(title.length).toBeGreaterThan(0);
+  });
+
+  test("sets twitter card to summary_large_image even on fallback", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const twitter = metadata.twitter as Record<string, unknown> | undefined;
+    expect(twitter?.card).toBe("summary_large_image");
+  });
+
+  test("includes openGraph object on fallback", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(null);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(metadata.openGraph).toBeDefined();
+    const ogTitle = metadata.openGraph?.title ?? "";
+    expect(typeof ogTitle === "string" ? ogTitle.length : 0).toBeGreaterThan(0);
+  });
+
+  // -------------------------------------------------------------------------
+  // Does not include og:images manually (Next auto-wires opengraph-image.tsx)
+  // -------------------------------------------------------------------------
+
+  test("does not set openGraph.images manually (Next auto-wires the OG image route)", async () => {
+    mockedLoadReceiptForMetadata.mockResolvedValue(RESOLVED_RECEIPT);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ txid: TXID }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(metadata.openGraph?.images).toBeUndefined();
   });
 });

@@ -11,11 +11,26 @@ import {
 import { baseSepolia } from "wagmi/chains";
 
 import { DONATION_ROUTED_EVENT } from "@/lib/contracts";
+import {
+  DONOR as FIXTURE_DONOR,
+  ENDAOMENT_FEE,
+  EUDAIMONIA_FEE,
+  FIXTURE_CHAIN_ID,
+  FIXTURE_TX_HASH,
+  GROSS as FIXTURE_GROSS,
+  NET as FIXTURE_NET,
+  NET_TO_ENTITY,
+  ORG_ENTITY,
+  ROUTER_ADDRESS,
+  ENDAOMENT_TREASURY,
+  EUDAIMONIA_TREASURY,
+  USDC_BASE_SEPOLIA,
+} from "@/lib/receipt/fixtures";
 import type { Charity } from "@/types/charity";
 import { verifyDonation } from "./verify";
 
 // ---------------------------------------------------------------------------
-// Shared test fixtures
+// Shared test fixtures (mock-only suite — no env router address)
 // ---------------------------------------------------------------------------
 
 const DONOR = getAddress("0xe0adb1b3c4d5e6f708192a3b4c5d6e7f8a097bb0");
@@ -44,11 +59,13 @@ function buildDonationRoutedLog(overrides?: {
   gross?: bigint;
   fee?: bigint;
   net?: bigint;
+  address?: Address;
 }) {
   const org = overrides?.org ?? ORG;
   const gross = overrides?.gross ?? GROSS;
   const fee = overrides?.fee ?? FEE;
   const net = overrides?.net ?? NET;
+  const logAddress = overrides?.address ?? "0x0000000000000000000000000000000000000000" as Address;
 
   const topics = encodeEventTopics({
     abi: [DONATION_ROUTED_EVENT],
@@ -61,13 +78,13 @@ function buildDonationRoutedLog(overrides?: {
     [gross, fee, net],
   ) as Hex;
 
-  return { topics, data, address: "0x0000000000000000000000000000000000000000" as Address };
+  return { topics, data, address: logAddress };
 }
 
 /**
  * Builds an ERC20 Transfer log from `from` to `to` for `value`.
  */
-function buildTransferLog(from: Address, to: Address, value: bigint) {
+function buildTransferLog(from: Address, to: Address, value: bigint, address?: Address) {
   const topics = encodeEventTopics({
     abi: [ERC20_TRANSFER_EVENT],
     eventName: "Transfer",
@@ -79,7 +96,7 @@ function buildTransferLog(from: Address, to: Address, value: bigint) {
     [value],
   ) as Hex;
 
-  return { topics, data, address: "0x0000000000000000000000000000000000000000" as Address };
+  return { topics, data, address: address ?? "0x0000000000000000000000000000000000000000" as Address };
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +133,15 @@ const CHARITY: Charity = {
   baseScanUrl: `https://basescan.org/address/${ORG}`,
 };
 
+// Charity matching the fixture ORG_ENTITY address (for real-Entity tests).
+const FIXTURE_CHARITY: Charity = {
+  id: "pcrf",
+  name: "Palestine Children's Relief Fund",
+  ein: "91-1876985",
+  endaomentOrgAddress: ORG_ENTITY,
+  baseScanUrl: `https://basescan.org/address/${ORG_ENTITY}`,
+};
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -123,10 +149,11 @@ const CHARITY: Charity = {
 describe("verifyDonation", () => {
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   // -------------------------------------------------------------------------
-  // Happy path — verified: true
+  // Happy path — verified: true (legacy single-transfer mock, no env router)
   // -------------------------------------------------------------------------
 
   it("returns verified:true with org/gross/fee/net when both assertions pass", async () => {
@@ -149,6 +176,7 @@ describe("verifyDonation", () => {
       gross: GROSS,
       fee: FEE,
       net: NET,
+      endaomentFee: 0n,
     });
   });
 
@@ -231,8 +259,8 @@ describe("verifyDonation", () => {
 
   it("returns verified:false reason=missing-transfer when no Transfer to org is present", async () => {
     // Arrange: DonationRouted is correct, but there is no Transfer to ORG.
-    const routedLog = buildDonationRoutedLog();
     // Transfer goes to a different address (OTHER_ORG), not to ORG.
+    const routedLog = buildDonationRoutedLog();
     const transferLog = buildTransferLog(
       "0x0000000000000000000000000000000000000001" as Address,
       OTHER_ORG,
@@ -295,5 +323,271 @@ describe("verifyDonation", () => {
 
     // Assert: must not pick up the Transfer as DonationRouted
     expect(result).toEqual({ verified: false, reason: "no-routed-log" });
+  });
+
+  // -------------------------------------------------------------------------
+  // NEW: Failure: wrong-router
+  // -------------------------------------------------------------------------
+
+  it("returns verified:false reason=wrong-router when DonationRouted is emitted by a non-router address", async () => {
+    // Arrange: stub the env so getRouterAddress returns ROUTER_ADDRESS from fixtures.
+    // The routed log is emitted from a DIFFERENT address — a foreign contract.
+    const FOREIGN_ROUTER = getAddress("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      address: FOREIGN_ROUTER, // emitted from a non-router address
+    });
+    const transferLog = buildTransferLog(FOREIGN_ROUTER, ORG, NET);
+    mockReceiptWithLogs([routedLog, transferLog]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert
+    expect(result).toEqual({ verified: false, reason: "wrong-router" });
+  });
+
+  it("passes the wrong-router check when DonationRouted is emitted by the configured router", async () => {
+    // Arrange: stub env so getRouterAddress returns ROUTER_ADDRESS; the routed
+    // log is emitted by that same address — should NOT trigger wrong-router.
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      address: ROUTER_ADDRESS, // emitted by the correct router
+    });
+    // Single transfer from router to org — classic mock shape.
+    const transferLog = buildTransferLog(ROUTER_ADDRESS, ORG, NET);
+    mockReceiptWithLogs([routedLog, transferLog]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: should be verified (not wrong-router)
+    expect(result).toMatchObject({ verified: true });
+  });
+
+  // -------------------------------------------------------------------------
+  // NEW: Real Endaoment Entity — two-transfer pull model
+  // -------------------------------------------------------------------------
+
+  it("verifies a real-Entity two-transfer pull and surfaces endaomentFee", async () => {
+    // Arrange: use the fixture amounts and the two-transfer Entity pull model.
+    // The Entity pulls its own protocol fee (router → Endaoment treasury) and
+    // the remainder (router → org entity), summing to NET.
+    //
+    // Fixture invariants:
+    //   EUDAIMONIA_FEE + NET === GROSS               (DonationRouted accounting)
+    //   ENDAOMENT_FEE + NET_TO_ENTITY === NET         (Entity two-transfer pull)
+    expect(EUDAIMONIA_FEE + FIXTURE_NET).toBe(FIXTURE_GROSS);
+    expect(ENDAOMENT_FEE + NET_TO_ENTITY).toBe(FIXTURE_NET);
+
+    // Stub env so verify.ts resolves the router address.
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    // Build the four-log receipt matching the fixture on-chain reality:
+    //   1. donor → router  (gross in — Transfer from donor)
+    //   2. router → Eudaimonia treasury  (1% platform fee)
+    //   3. router → Endaoment treasury  (1.5% Endaoment fee — Entity's first pull)
+    //   4. router → org Entity  (net − endaomentFee — Entity's second pull)
+    //   5. DonationRouted emitted by router
+    const donorInLog = buildTransferLog(
+      FIXTURE_DONOR,
+      ROUTER_ADDRESS,
+      FIXTURE_GROSS,
+      USDC_BASE_SEPOLIA,
+    );
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      EUDAIMONIA_FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const endaomentFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ENDAOMENT_TREASURY,
+      ENDAOMENT_FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG_ENTITY,
+      NET_TO_ENTITY,
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG_ENTITY,
+      gross: FIXTURE_GROSS,
+      fee: EUDAIMONIA_FEE,
+      net: FIXTURE_NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([
+      donorInLog,
+      eudaimoniaFeeLog,
+      endaomentFeeLog,
+      entityReceiptLog,
+      routedLog,
+    ]);
+
+    // Act
+    const result = await verifyDonation(FIXTURE_TX_HASH, FIXTURE_CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: verified with the correct on-chain values and endaomentFee decoded.
+    expect(result).toEqual({
+      verified: true,
+      org: ORG_ENTITY,
+      gross: FIXTURE_GROSS,
+      fee: EUDAIMONIA_FEE,
+      net: FIXTURE_NET,
+      endaomentFee: ENDAOMENT_FEE,
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // NEW (M4): Gross-side invariant guard
+  //
+  // The router branch classifies legs by matching transfer VALUE against
+  // routedArgs.fee. A defensive guard asserts the full split reconciles against
+  // gross: fee + endaomentFee + (settlementSum - endaomentFee) === gross. A
+  // corrupt event whose net side reconciles but whose gross does not must be
+  // rejected as missing-transfer.
+  // -------------------------------------------------------------------------
+
+  it("returns verified:false reason=missing-transfer when fee + net !== gross (gross-side invariant)", async () => {
+    // Arrange: settlement sums to net (so the net-side check passes), but the
+    // event's gross is inflated so fee + net !== gross. The new gross-side guard
+    // must reject this even though every per-leg amount is internally present.
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const BAD_GROSS = GROSS + 1n; // breaks fee + net === gross
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG,
+      NET, // settlementSum === net → net-side check passes
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      gross: BAD_GROSS,
+      fee: FEE,
+      net: NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([eudaimoniaFeeLog, entityReceiptLog, routedLog]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: gross-side guard fires.
+    expect(result).toEqual({ verified: false, reason: "missing-transfer" });
+  });
+
+  it("rejects with missing-transfer when the platform fee equals the endaoment skim (filter over-excludes both legs)", async () => {
+    // Arrange: eudaimoniaFee === endaomentFee. The settlement filter excludes
+    // EVERY router-out transfer whose value === fee && to !== org, so it drops
+    // BOTH equal-valued legs — the eudaimonia fee leg AND the endaoment skim leg.
+    // The endaoment skim is therefore missing from settlementSum, which no longer
+    // equals net, so the existing net-side check fails loudly. This proves the
+    // misfire is caught (it does not silently produce a wrong fee breakdown).
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const EQUAL_FEE = 1_000_000n; // platform fee
+    const SKIM = EQUAL_FEE; // endaoment skim equals the platform fee
+    const ENTITY_NET = 50_000_000n;
+    const EQ_NET = SKIM + ENTITY_NET; // settlement sum (if classified correctly)
+    const EQ_GROSS = EQUAL_FEE + EQ_NET;
+
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      EQUAL_FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    const endaomentFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ENDAOMENT_TREASURY,
+      SKIM,
+      USDC_BASE_SEPOLIA,
+    );
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG,
+      ENTITY_NET,
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      gross: EQ_GROSS,
+      fee: EQUAL_FEE,
+      net: EQ_NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([
+      eudaimoniaFeeLog,
+      endaomentFeeLog,
+      entityReceiptLog,
+      routedLog,
+    ]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: misfire fails loudly rather than returning a wrong breakdown.
+    expect(result).toEqual({ verified: false, reason: "missing-transfer" });
+  });
+
+  it("verifies an Entity with zero endaoment fee (endaomentFee === 0n)", async () => {
+    // Arrange: Entity takes no protocol fee — only one settlement transfer:
+    //   router → org entity for exactly NET.
+    // This exercises R5: zero-fee Entity.
+    vi.stubEnv("NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA", ROUTER_ADDRESS);
+
+    const eudaimoniaFeeLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      EUDAIMONIA_TREASURY,
+      FEE,
+      USDC_BASE_SEPOLIA,
+    );
+    // Single settlement: full net goes directly to org (no Endaoment fee split).
+    const entityReceiptLog = buildTransferLog(
+      ROUTER_ADDRESS,
+      ORG,
+      NET,
+      USDC_BASE_SEPOLIA,
+    );
+    const routedLog = buildDonationRoutedLog({
+      org: ORG,
+      gross: GROSS,
+      fee: FEE,
+      net: NET,
+      address: ROUTER_ADDRESS,
+    });
+
+    mockReceiptWithLogs([eudaimoniaFeeLog, entityReceiptLog, routedLog]);
+
+    // Act
+    const result = await verifyDonation(TX_HASH, CHARITY, FIXTURE_CHAIN_ID);
+
+    // Assert: verified; endaomentFee is 0n because all settlement went to org.
+    expect(result).toEqual({
+      verified: true,
+      org: ORG,
+      gross: GROSS,
+      fee: FEE,
+      net: NET,
+      endaomentFee: 0n,
+    });
   });
 });

@@ -1,12 +1,7 @@
-import { base } from "wagmi/chains";
+import type { Metadata } from "next";
 
-import { CharityCard } from "@/components/receipt/CharityCard";
-import { Footer } from "@/components/receipt/Footer";
-import { getCharity } from "@/lib/endaoment/registry";
-import { resolveOrgMetadata } from "@/lib/endaoment/metadata";
-import { verifyDonation } from "@/lib/endaoment/verify";
-import type { Charity, VerificationResult } from "@/types/charity";
-import type { Hex } from "@/types/receipt";
+import { ReceiptView } from "@/components/receipt/ReceiptView";
+import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -17,175 +12,89 @@ interface ReceiptPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/** Parsed, server-side-only loader output. */
-interface ReceiptBundle {
-  charity: Charity;
-  mission: string;
-  verification: VerificationResult;
-  txid: Hex;
-  chainId: number;
-}
-
 // ---------------------------------------------------------------------------
-// Helpers
+// generateMetadata — server-side, independent of the client page body (D4)
 // ---------------------------------------------------------------------------
 
 /**
- * Formats a USDC base-unit bigint (6 decimals) to a human-readable string.
- * e.g. 10_000_000n → "10.000000"
- */
-function formatUsdc(value: bigint): string {
-  const DECIMALS = 6;
-  const divisor = BigInt(10 ** DECIMALS);
-  const whole = value / divisor;
-  const frac = value % divisor;
-  return `${whole}.${frac.toString().padStart(DECIMALS, "0")}`;
-}
-
-/**
- * Composes getCharity + resolveOrgMetadata + verifyDonation into a single
- * bundle for the receipt page.
+ * Generates Open Graph + Twitter share metadata for a donation receipt.
  *
- * Returns `null` if the campaign slug is not found — callers render a
- * not-found message instead of crashing.
+ * Resolved:  "<charity> donation — Verified on Eudaimonia" + amount description.
+ * Fallback:  generic "Donation receipt — Eudaimonia" when the receipt cannot
+ *            be decoded (tx not found, wrong network, decode failure).
+ *
+ * Next auto-wires `opengraph-image.tsx` as `og:image` — we do NOT set
+ * `openGraph.images` manually to avoid duplicating the auto-wired route.
  */
-async function loadReceiptBundle(
-  txid: string,
-  campaignId: string,
-  chainId: number,
-): Promise<ReceiptBundle | null> {
-  const charity = getCharity(campaignId, chainId);
-  if (!charity) return null;
+export async function generateMetadata({
+  params,
+}: ReceiptPageProps): Promise<Metadata> {
+  const { txid } = await params;
 
-  // Resolve metadata and verification in parallel — independent I/O.
-  const [metadata, verification] = await Promise.all([
-    resolveOrgMetadata(charity.ein),
-    verifyDonation(txid as Hex, charity, chainId),
-  ]);
+  const receipt = await loadReceiptForMetadata(
+    txid as `0x${string}`,
+  );
+
+  if (receipt) {
+    const title = `${receipt.charityName} donation — Verified on Eudaimonia`;
+    const description = `${receipt.amountUsdc} USDC donated to ${receipt.charityName}, verified on-chain via Eudaimonia.`;
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        type: "website",
+      },
+      twitter: {
+        card: "summary_large_image",
+        title,
+        description,
+      },
+    };
+  }
+
+  // Fallback — valid metadata, no charity-specific details
+  const fallbackTitle = "Donation receipt — Eudaimonia";
+  const fallbackDescription =
+    "A verified on-chain donation receipt, powered by Eudaimonia.";
 
   return {
-    charity,
-    mission: metadata.mission,
-    verification,
-    txid: txid as Hex,
-    chainId,
+    title: fallbackTitle,
+    description: fallbackDescription,
+    openGraph: {
+      title: fallbackTitle,
+      description: fallbackDescription,
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: fallbackTitle,
+      description: fallbackDescription,
+    },
   };
 }
 
 // ---------------------------------------------------------------------------
-// Page
+// Page — server shell (D4: full client rendering via ReceiptView)
 // ---------------------------------------------------------------------------
 
-export default async function ReceiptPage({ params, searchParams }: ReceiptPageProps) {
+/**
+ * Server shell for `/receipt/[txid]`.
+ *
+ * Parses the dynamic route param and delegates all data loading + rendering
+ * to the `ReceiptView` client component, which calls `useReceipt` via wagmi.
+ *
+ * `generateMetadata` and `opengraph-image` are independent server exports —
+ * the shell body is not affected by the metadata layer.
+ */
+export default async function ReceiptPage({ params }: ReceiptPageProps) {
   const { txid } = await params;
-  const sp = await searchParams;
-
-  const campaignId = typeof sp.campaign === "string" ? sp.campaign : "";
-  const chainParam = typeof sp.chain === "string" ? Number(sp.chain) : NaN;
-  const chainId = Number.isFinite(chainParam) ? chainParam : base.id;
-
-  const bundle = await loadReceiptBundle(txid, campaignId, chainId);
-
-  // ---- Charity not found ----
-  if (bundle === null) {
-    return (
-      <main>
-        <p>Charity not found for campaign &quot;{campaignId}&quot;.</p>
-        <Footer />
-      </main>
-    );
-  }
-
-  const { charity, mission, verification } = bundle;
-  const baseScanUrl = charity.baseScanUrl ?? undefined;
-
-  // ---- Unverified state ----
-  if (!verification.verified) {
-    return (
-      <main>
-        <CharityCard
-          data={{
-            charity: charity.name,
-            ein: charity.ein,
-            mission,
-            // Placeholder fields — off-chain data not available at this stage
-            donorShort: "—",
-            amount: "—",
-            amountUsdc: "—",
-            date: "—",
-            time: "—",
-            network: "Base",
-            txid: txid as Hex,
-            txidShort: `${txid.slice(0, 6)}…${txid.slice(-4)}`,
-            block: "—",
-            confirmations: "—",
-            ethIn: "—",
-            rate: "—",
-            platformFee: "0.00",
-            endaomentFee: "0.00",
-            orgFund: charity.endaomentOrgAddress ?? "—",
-            charityAddr: charity.endaomentOrgAddress ?? "—",
-            donorFee: "0.00",
-          }}
-          baseScanUrl={baseScanUrl}
-        />
-        <section aria-label="Verification status" style={{ padding: "24px 64px" }}>
-          <p><strong>Unverified</strong></p>
-          <p>This transaction could not be verified on-chain.</p>
-          <p>Reason: {verification.reason}</p>
-        </section>
-        <Footer />
-      </main>
-    );
-  }
-
-  // ---- Verified state ----
-  const { gross, fee, net } = verification;
 
   return (
     <main>
-      <CharityCard
-        data={{
-          charity: charity.name,
-          ein: charity.ein,
-          mission,
-          donorShort: "—",
-          amount: formatUsdc(gross),
-          amountUsdc: formatUsdc(gross),
-          date: "—",
-          time: "—",
-          network: "Base",
-          txid: txid as Hex,
-          txidShort: `${txid.slice(0, 6)}…${txid.slice(-4)}`,
-          block: "—",
-          confirmations: "—",
-          ethIn: "—",
-          rate: "—",
-          platformFee: formatUsdc(fee),
-          endaomentFee: formatUsdc(fee),
-          orgFund: charity.endaomentOrgAddress ?? "—",
-          charityAddr: charity.endaomentOrgAddress ?? "—",
-          donorFee: "0.00",
-        }}
-        baseScanUrl={baseScanUrl}
-      />
-      <section aria-label="On-chain amounts" data-txid={txid} style={{ padding: "24px 64px" }}>
-        <dl>
-          <div>
-            <dt>Gross (USDC)</dt>
-            <dd>{formatUsdc(gross)}</dd>
-          </div>
-          <div>
-            <dt>Fee (USDC)</dt>
-            <dd>{formatUsdc(fee)}</dd>
-          </div>
-          <div>
-            <dt>Net to charity (USDC)</dt>
-            <dd>{formatUsdc(net)}</dd>
-          </div>
-        </dl>
-      </section>
-      <Footer />
+      <ReceiptView txid={txid} />
     </main>
   );
 }

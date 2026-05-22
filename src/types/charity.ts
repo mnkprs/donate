@@ -55,7 +55,9 @@ export type VerificationFailureReason =
   /** No ERC20 `Transfer(_, org, net)` log accompanied the routed event. */
   | "missing-transfer"
   /** The charity has no configured org address on the active chain. */
-  | "no-org-address-for-chain";
+  | "no-org-address-for-chain"
+  /** The `DonationRouted` log was emitted by an address other than the configured router. */
+  | "wrong-router";
 
 /**
  * Result of verifying a donation transaction against a charity (Task 4).

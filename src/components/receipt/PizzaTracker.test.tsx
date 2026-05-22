@@ -1,5 +1,9 @@
+// @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
+import { base, baseSepolia } from "wagmi/chains";
 
 import { PizzaTracker } from "@/components/receipt/PizzaTracker";
 import type { Stage } from "@/types/receipt";
@@ -134,5 +138,135 @@ describe("PizzaTracker", () => {
     expect(cardHtml).toContain("#eef2f6");
     // Minimal variant should not render those card borders.
     expect(minimalHtml).not.toContain("#eef2f6");
+  });
+});
+
+describe("PizzaTracker — per-stage Verify ↗ hrefs", () => {
+  const TX =
+    "0xabc123def456abc123def456abc123def456abc123def456abc123def456abc123" as const;
+
+  test("without txid/chainId props all Verify links fall back to href='#'", () => {
+    const html = renderToString(<PizzaTracker stages={fixtureStages} />);
+    // Every VerifyLink should default to href="#" when no tx context is given.
+    // Active stages = 4; each must use href="#".
+    const hrefHash = (html.match(/href="#"/g) ?? []).length;
+    expect(hrefHash).toBeGreaterThanOrEqual(4);
+  });
+
+  test("with txid + base.id each active-stage Verify link points to basescan.org tx #eventlog", () => {
+    const html = renderToString(
+      <PizzaTracker stages={fixtureStages} txid={TX} chainId={base.id} />,
+    );
+    const expectedHref = `href="https://basescan.org/tx/${TX}#eventlog"`;
+    const matches = (html.match(new RegExp(expectedHref, "g")) ?? []).length;
+    // 4 active stages should each receive this href.
+    expect(matches).toBe(4);
+  });
+
+  test("with txid + baseSepolia.id each active-stage Verify link points to sepolia.basescan.org tx #eventlog", () => {
+    const html = renderToString(
+      <PizzaTracker stages={fixtureStages} txid={TX} chainId={baseSepolia.id} />,
+    );
+    const expectedHref = `href="https://sepolia.basescan.org/tx/${TX}#eventlog"`;
+    const matches = (html.match(new RegExp(expectedHref, "g")) ?? []).length;
+    expect(matches).toBe(4);
+  });
+
+  test("inactive stage never receives a Verify link regardless of txid prop", () => {
+    const inactiveOnly: Stage[] = [
+      { ...fixtureStages[3], inactive: true },
+    ];
+    const html = renderToString(
+      <PizzaTracker stages={inactiveOnly} txid={TX} chainId={base.id} />,
+    );
+    expect(html).not.toContain("Verify ↗");
+  });
+});
+
+describe("PizzaTracker — subtitle stop count is derived from stages.length", () => {
+  test("interpolates the stage count instead of hardcoding 'Five'", () => {
+    const html = renderToString(<PizzaTracker stages={fixtureStages} />);
+    expect(html).toContain(`${fixtureStages.length} stops`);
+    expect(html).not.toContain("Five stops");
+  });
+
+  test("reflects a different stage count for a shorter timeline", () => {
+    const twoStages = fixtureStages.slice(0, 2);
+    const html = renderToString(<PizzaTracker stages={twoStages} />);
+    expect(html).toContain("2 stops");
+  });
+});
+
+describe("PizzaTracker — keyboard focus parity reveals fee detail", () => {
+  let container: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    container?.remove();
+    container = null;
+  });
+
+  test("focusing a stage reveals the same feeOnHover detail that hover reveals", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(<PizzaTracker stages={fixtureStages} />);
+    });
+
+    // The fee detail (financial data) must not be present before focus.
+    expect(container.textContent).not.toContain("AMM swap fee");
+
+    // Stage 2 (index 1) carries feeOnHover — locate its focusable container.
+    const focusables = container.querySelectorAll<HTMLElement>(
+      '[tabindex="0"]',
+    );
+    const feeStage = Array.from(focusables).find((el) =>
+      el.textContent?.includes("Converted"),
+    );
+    expect(feeStage).toBeDefined();
+
+    act(() => {
+      feeStage?.focus();
+    });
+
+    // Focus must reveal the fee label + deducted amount, identical to hover.
+    expect(container.textContent).toContain("AMM swap fee");
+    expect(container.textContent).toContain("0.0015");
+
+    // Blur clears it again, mirroring onMouseLeave.
+    act(() => {
+      feeStage?.blur();
+    });
+    expect(container.textContent).not.toContain("AMM swap fee");
+  });
+
+  test("focusable stage links to its fee block via aria-describedby (role=tooltip)", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(<PizzaTracker stages={fixtureStages} />);
+    });
+
+    const focusables = container.querySelectorAll<HTMLElement>(
+      '[tabindex="0"]',
+    );
+    const feeStage = Array.from(focusables).find((el) =>
+      el.textContent?.includes("Converted"),
+    );
+    expect(feeStage).toBeDefined();
+
+    const describedBy = feeStage?.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+
+    act(() => {
+      feeStage?.focus();
+    });
+
+    const tip = describedBy ? document.getElementById(describedBy) : null;
+    expect(tip).not.toBeNull();
+    expect(tip?.getAttribute("role")).toBe("tooltip");
   });
 });
