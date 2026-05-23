@@ -14,6 +14,7 @@
  */
 
 import * as Sentry from "@sentry/nextjs";
+import { scrubSentryEvent, scrubSentryBreadcrumb } from "@/lib/sentry/scrubPii";
 
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
@@ -21,4 +22,13 @@ Sentry.init({
   sendDefaultPii: false,
   // Disable performance tracing — we only need error events for this epic.
   tracesSampleRate: 0,
+  // Defense-in-depth: strip Stripe session ids, wallet addresses, tx hashes,
+  // and emails from event payloads before they leave the process (#29).
+  // Returns the scrubbed event (never null) so no errors are silently dropped.
+  // Cast needed: scrubPii uses structural types to stay SDK-import-free; the
+  // SDK's `Exception`/`Breadcrumb` lack the index signature but are compatible.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeSend: scrubSentryEvent as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  beforeBreadcrumb: scrubSentryBreadcrumb as any,
 });
