@@ -83,12 +83,14 @@ describe("buildCsp()", () => {
     expect(directives(csp).get("script-src")).toContain(`'nonce-${NONCE}'`);
   });
 
-  it("locks down default-src, object-src, base-uri, and framing", () => {
+  it("locks down default-src, object-src, base-uri, framing, and form-action", () => {
     const d = directives(buildCsp(NONCE));
     expect(d.get("default-src")).toEqual(["'self'"]);
     expect(d.get("object-src")).toEqual(["'none'"]);
     expect(d.get("base-uri")).toEqual(["'self'"]);
     expect(d.get("frame-ancestors")).toEqual(["'none'"]);
+    // form-action does not inherit from default-src; must be explicit.
+    expect(d.get("form-action")).toEqual(["'self'"]);
   });
 
   it("includes upgrade-insecure-requests", () => {

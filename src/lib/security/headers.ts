@@ -194,6 +194,10 @@ export function buildCsp(
     "base-uri 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
+    // form-action does NOT fall back to default-src, so it must be set
+    // explicitly — otherwise an injected <form action="https://evil"> would
+    // be free to exfiltrate POST data despite the rest of the policy.
+    "form-action 'self'",
     "upgrade-insecure-requests",
   ];
 
