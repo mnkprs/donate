@@ -6,6 +6,7 @@ import { Footer } from "@/components/landing/Footer";
 import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { NavBar } from "@/components/landing/NavBar";
+import { LiveReceiptStripMount } from "@/components/receipt/LiveReceiptStripMount";
 import { TrackMount } from "@/components/analytics/TrackMount";
 import { getCampaigns } from "@/lib/campaigns";
 
@@ -24,6 +25,7 @@ export default function Home() {
         <CausesGrid campaigns={getCampaigns()} />
         <CreamBand />
         <HowItWorks />
+        <LiveReceiptStripMount />
         <ClosingCTA />
       </main>
       <Footer />
