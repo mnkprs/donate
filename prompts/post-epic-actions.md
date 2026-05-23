@@ -18,6 +18,7 @@
 | ☐ | **RPC provider** (Alchemy / QuickNode) | Public `*.base.org` endpoints are dev-only and will rate-limit under real load. Register and create authenticated Base **mainnet** + **Sepolia** app URLs. | `NEXT_PUBLIC_BASE_RPC_URL`, `NEXT_PUBLIC_BASE_SEPOLIA_RPC_URL` (`.env` 9–12) |
 | ☐ | **Vercel KV / Upstash Redis** | Provision a KV store (replaces the MVP in-memory session store — see E3.1) and run `vercel env pull` to populate credentials. | `KV_REST_API_URL`, `KV_REST_API_TOKEN` (`.env` 24–27) |
 | ☐ | **Basescan API key** | Register at basescan.org/myapikey for contract source verification during deploy. | `BASESCAN_API_KEY` (`DEPLOY.md` §Environment) |
+| ☐ | **Sentry project + DSN** | Create a Sentry project (Next.js platform). Copy the DSN for both server and client; optionally generate a `SENTRY_AUTH_TOKEN` for prod source-map upload. After deploy, hit `GET /api/debug/sentry` (gate via `SENTRY_DEBUG_ROUTE_ENABLED=true` in non-prod) and confirm the event lands in Sentry — this is the Epic 7 acceptance check. | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, optional `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` (Epic 7 / 1B) |
 
 ### B. Wallets, keys & on-chain identities (funds + judgment required)
 
@@ -49,6 +50,7 @@
 |---|---|---|
 | ☐ | **Production environment** | Set every server secret in the host (Vercel) project settings — secrets stay **server-only**, never `NEXT_PUBLIC_*`. Set `NEXT_PUBLIC_CHAIN=base` for production. |
 | ☐ | **Custom domain + DNS** | Attach the production domain and configure DNS / TLS at the host. |
+| ☐ | **CSP verification via securityheaders.com** | After the first prod deploy, run the production URL through https://securityheaders.com/ and confirm the page scores A or A+ with the Epic 7 / 1D nonce-based CSP applied. Cross-check the headers tab against the directive list in `src/lib/security/headers.ts` (`buildCsp`). Final Epic 7 acceptance criterion. |
 
 ### F. Legal, compliance & trust (founder / counsel — not engineering)
 
@@ -135,3 +137,24 @@
 | E6.2 | Harden the network label in `buildReceiptBundle` | OPEN | Review M2. `input.chainId === 8453 ? "Base" : "Base Sepolia"` labels **any** non-mainnet id as "Base Sepolia" — misleading on a transparency receipt for a misconfigured/unknown chain. Fix: match `base.id` / `baseSepolia.id` explicitly from `wagmi/chains` and surface "Unknown" for anything else. Cheap and unambiguous; bundled here only because it shares the mainnet-readiness theme with E6.1. |
 
 > Fixed & green this session (no action): review H1 (ESLint `set-state-in-effect` error in `useReceipt`), H2 (`PizzaTracker` keyboard/touch a11y for fee detail), H3 (`ReceiptSkeleton` `role="status"`/`aria-live`), M4 (gross-side fee-split invariant guard in `verify.ts` + `decodeReceipt.ts`) and M1 (`verifyDonation` throw-surface JSDoc). Full suite 755/755, `tsc --noEmit` + ESLint clean, `next build` passing. Remaining review MEDIUM/LOW items (M3 `formatUnits` precision, M5 server `notFound()` for malformed txid, M6 `React.cache()` dedup, function-length, magic-number LOWs) left as optional polish in the [review doc](.claude/reviews/epic-6-receipt-review.md).
+
+---
+
+## Epic 7 — Production Readiness ([#8](https://github.com/mnkprs/Philotimo/issues/8) · [plan](prompts/epic-7-production-readiness-plan.md))
+
+Code-side hardening has shipped on `epic-7-production-readiness` (waves 1–4: CI build gate, legal pages, runbook, deploy docs, Sentry, Vercel Analytics, Lighthouse perf budget, nonce-based CSP). The remaining items are either **human-gated** (see Sections A / E / F above) or **engineering follow-ups** tracked as GitHub issues — none can be closed from inside the repo without the corresponding external action.
+
+| # | Item | Status | Trigger / Notes |
+|---|---|---|---|
+| E7.1 | Provision real Sentry DSN + verify `/api/debug/sentry` end-to-end | OPEN — **acceptance** | Code path is in place (`@sentry/nextjs` v10 init in `src/instrumentation.ts` / `src/instrumentation-client.ts`, capture wired into `webhook-handler.ts` and `loadReceiptForMetadata.ts`, safe no-op without DSN). Closes when section A "Sentry project + DSN" is done **and** a manual GET of `/api/debug/sentry` (or `SENTRY_DEBUG_ROUTE_ENABLED=true` non-prod) appears in Sentry. |
+| E7.2 | First production deploy + securityheaders.com check | OPEN — **acceptance** | Deploy + URL via section E. Run https://securityheaders.com/ on the prod URL and confirm A/A+ score. |
+| E7.3 | Scrub PII (Stripe session id) from captured webhook errors via Sentry `beforeSend` | OPEN (follow-up) | The webhook handler's hash-less-settlement error message contains the Stripe session id; it would surface in Sentry event titles once a real DSN lands. Add a `beforeSend` hook in `src/instrumentation.ts`/`*.config.ts` that strips known PII fragments. Tracked as a GitHub issue (Epic 7 / 1B follow-up). |
+| E7.4 | Validate Lighthouse `perf ≥ 0.90` on `/`, `/donate/<slug>`, `/receipt/<txid>` after `force-dynamic` on landing | OPEN (follow-up) | `lighthouse.yml` will run on the next PR. Force-dynamic on landing (required for nonce-CSP) may regress LCP/TBT — plan risk R2. If the gate fails, address with image/font/JS-budget fixes in a separate PR. Tracked as a GitHub issue. |
+| E7.5 | Security-reviewer pass on `epic-7-production-readiness` before merge | OPEN (follow-up) | Per project rules, security-sensitive slices need a `security-reviewer` agent pass: commit `3f6a163` (Sentry capture surfaces + PII surface) and commit `3dce7f6` (CSP host coverage + nonce middleware). Tracked as a GitHub issue. |
+| E7.6 | Fix or remove the footer `/fee-policy` link | OPEN (follow-up) | `src/components/landing/Footer.tsx` links to `/fee-policy`, but no route exists. Either create the page (likely sourcing from `FeeDisclosure`) or remove the link. Pre-existing — surfaced by Epic 7 / 2B. Tracked as a GitHub issue. |
+| E7.7 | Phase 0 — tick E6.1, E6.2, and "CI green on main with build step" boxes on issue #8 | OPEN (hygiene) | Code is shipped + tested (PR #26 for E6.1/E6.2; this branch's wave 1 for the CI build step). Run `npm test` to confirm, then update the issue checkboxes with commit-link evidence. |
+| E7.8 | Legal counsel sign-off on `/terms`, `/privacy`, fee disclosure | OPEN | Draft copy shipped (`src/app/terms/page.tsx`, `src/app/privacy/page.tsx`, `src/components/legal/FeeDisclosure.tsx`). Closes via Section F rows (Terms/Privacy + Fee-disclosure sign-off). |
+
+> Note (decision pending): the 2D agent during wave 1 created `scripts/fetch-endaoment-orgs.mjs` (an Endaoment org-lookup helper for E5.1) **outside its assigned footprint**. The file is left **untracked** for an explicit accept/reject decision — useful for E5.1 if the EIN-based lookup path is wanted, ignore otherwise.
+
+> `style-src 'unsafe-inline'` is a deliberate CSP concession (Tailwind / Next inject inline styles); documented in `src/lib/security/headers.ts`. Not tracked as an action — accept-and-document.
