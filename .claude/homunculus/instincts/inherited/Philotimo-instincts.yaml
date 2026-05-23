@@ -1,0 +1,816 @@
+# Instincts generated from https://github.com/mnkprs/Philotimo
+# Generated: 2026-05-22T15:04:20.075Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: Philotimo-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, test, fix, docs, refactor
+
+## Evidence
+
+- 52 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat(onramp): epic-3 phase 2 — Stripe onramp request builder + client wrapper, test(onramp): epic-3 phase 3 RED — session store repository contract
+
+---
+id: Philotimo-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Commit Length
+
+## Action
+
+Write moderate-length commit messages (~69 characters)
+
+## Evidence
+
+- Average commit message length: 69 chars
+- Based on 52 commits
+
+---
+id: Philotimo-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: Philotimo-import-alias
+trigger: "when importing modules"
+confidence: 0.85
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Import Alias
+
+## Action
+
+Use path aliases (@/, ~/) instead of relative imports
+
+## Evidence
+
+- Import analysis shows alias pattern
+- Example: import { x } from '@/lib/x'
+
+---
+id: Philotimo-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Export Style
+
+## Action
+
+Prefer mixed exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: mixed
+
+---
+id: Philotimo-arch-type-based
+trigger: "when adding new code"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Arch Type Based
+
+## Action
+
+Place code in the appropriate type folder (components/, services/, utils/, etc.)
+
+## Evidence
+
+- Type-based module organization detected
+- Folders: app, components, lib, types
+
+---
+id: Philotimo-test-colocate
+trigger: "when writing tests"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Test Colocate
+
+## Action
+
+Place test file next to the source file (e.g., Button.test.tsx next to Button.tsx)
+
+## Evidence
+
+- Colocated test pattern detected
+- Tests live alongside source files
+
+---
+id: Philotimo-test-framework
+trigger: "when writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Test Framework
+
+## Action
+
+Use vitest as the test framework
+
+## Evidence
+
+- Test framework detected: vitest
+- File pattern: *.test.ts
+
+---
+id: Philotimo-test-naming
+trigger: "when creating a test file"
+confidence: 0.85
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Test Naming
+
+## Action
+
+Name test files using the pattern: *.test.ts
+
+## Evidence
+
+- File pattern: *.test.ts
+- Consistent across test files
+
+---
+id: Philotimo-test-mocking
+trigger: "when mocking dependencies in tests"
+confidence: 0.75
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Test Mocking
+
+## Action
+
+Use msw for mocking
+
+## Evidence
+
+- Mocking pattern detected: msw
+- Consistent across test files
+
+---
+id: Philotimo-test-types
+trigger: "when planning tests for a feature"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Test Types
+
+## Action
+
+Write unit, integration, e2e tests to match project standards
+
+## Evidence
+
+- Test types detected: unit, integration, e2e
+- Coverage config: yes
+
+---
+id: Philotimo-workflow-feature-development
+trigger: "when implementing a new feature"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Feature Development
+
+## Action
+
+Follow the feature-development workflow:
+1. Add feature implementation
+2. Add tests for feature
+3. Update documentation
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~18x per month
+- Files: src/lib/onramp/*, src/types/*, /*
+
+---
+id: Philotimo-workflow-test-driven-development
+trigger: "when adding new functionality"
+confidence: 0.75
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Test Driven Development
+
+## Action
+
+Follow the test-driven-development workflow:
+1. Write failing test
+2. Implement code to pass test
+3. Refactor if needed
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~5x per month
+- Files: **/*.test.*, **/*.spec.*, src/**/*
+
+---
+id: Philotimo-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: src/**/*
+
+---
+id: Philotimo-workflow-tdd-feature-development-red-green
+trigger: "when doing tdd feature development red green"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Tdd Feature Development Red Green
+
+## Action
+
+Follow the tdd-feature-development-red-green workflow:
+1. Write a test/spec file for the new feature or contract (RED, references not-yet-implemented module, fails to compile or run).
+2. Implement the feature/module to satisfy the test (GREEN, all tests pass).
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~8x per month
+- Files: src/app/api/**/route.test.ts, src/app/api/**/route.ts, src/lib/**.test.ts
+
+---
+id: Philotimo-workflow-api-endpoint-addition
+trigger: "when doing api endpoint addition"
+confidence: 0.7
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Api Endpoint Addition
+
+## Action
+
+Follow the api-endpoint-addition workflow:
+1. Create or update the route handler file (route.ts) under src/app/api/...
+2. Add or update the corresponding test file (route.test.ts).
+3. Update or add related type definitions (src/types/...).
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~4x per month
+- Files: src/app/api/**/route.ts, src/app/api/**/route.test.ts, src/types/**.ts
+
+---
+id: Philotimo-workflow-security-remediation-hardening
+trigger: "when doing security remediation hardening"
+confidence: 0.65
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Security Remediation Hardening
+
+## Action
+
+Follow the security-remediation-hardening workflow:
+1. Update implementation files to add guards, validation, or logging.
+2. Update or add tests to cover new security cases.
+3. Update documentation or review files to record the remediation.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~3x per month
+- Files: src/app/api/**/route.ts, src/app/api/**/route.test.ts, src/lib/**.ts
+
+---
+id: Philotimo-workflow-infrastructure-adapter-implementation
+trigger: "when doing infrastructure adapter implementation"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Infrastructure Adapter Implementation
+
+## Action
+
+Follow the infrastructure-adapter-implementation workflow:
+1. Define the interface and in-memory/mock implementation.
+2. Implement the production adapter (e.g., Vercel KV, pino logger).
+3. Add or update tests for both implementations.
+4. Wire the adapter into the main application logic.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/lib/kv/*.ts, src/lib/kv/*.test.ts, src/lib/log/*.ts
+
+---
+id: Philotimo-workflow-smart-contract-feature-tdd
+trigger: "when doing smart contract feature tdd"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Smart Contract Feature Tdd
+
+## Action
+
+Follow the smart-contract-feature-tdd workflow:
+1. Write a failing Solidity test (t.sol) referencing the new contract/script.
+2. Implement the contract or script in Solidity.
+3. Update or add deployment scripts if needed.
+4. Update documentation/runbooks as needed.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: contracts/test/**/*.t.sol, contracts/src/**/*.sol, contracts/script/**/*.s.sol
+
+---
+id: Philotimo-workflow-frontend-contract-integration
+trigger: "when doing frontend contract integration"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/mnkprs/Philotimo
+---
+
+# Philotimo Workflow Frontend Contract Integration
+
+## Action
+
+Follow the frontend-contract-integration workflow:
+1. Add or update the contract ABI and address resolution logic in src/lib/contracts.ts.
+2. Write or update tests to assert ABI hash matches and address resolution works.
+3. Update .env.local.example and deployment docs as needed.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: src/lib/contracts.ts, src/lib/contracts.test.ts, .env.local.example
+
+---
+id: philotimo-instinct-file-naming-camelCase
+trigger: "When creating a new file in the src directory"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct File Naming CamelCase
+
+## Action
+
+Name the file using camelCase (e.g., createSession.ts)
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+- Seen in files: src/lib/onramp/createSession.ts, src/lib/onramp/stripe.ts
+
+---
+id: philotimo-instinct-function-naming-camelCase
+trigger: "When defining a new function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: philotimo-instinct-class-naming-PascalCase
+trigger: "When defining a new class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Class Naming PascalCase
+
+## Action
+
+Name the class using PascalCase
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: philotimo-instinct-constant-naming-SCREAMING_SNAKE_CASE
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Constant Naming SCREAMING_SNAKE_CASE
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: philotimo-instinct-import-alias
+trigger: "When importing modules"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Import Alias
+
+## Action
+
+Use import aliases for module paths
+
+## Evidence
+
+- Pattern in importStyle: alias
+
+---
+id: philotimo-instinct-export-mixed
+trigger: "When exporting modules or functions"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Export Mixed
+
+## Action
+
+Use both named and default exports as appropriate
+
+## Evidence
+
+- Pattern in exportStyle: mixed
+
+---
+id: philotimo-instinct-test-file-pattern
+trigger: "When creating a test file"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Test File Pattern
+
+## Action
+
+Name the test file with the pattern *.test.ts and colocate it with the implementation
+
+## Evidence
+
+- Pattern in testing.filePattern: *.test.ts
+- Pattern in architecture.folderStructure.testLocation: colocated
+- Seen in files: src/lib/onramp/createSession.test.ts
+
+---
+id: philotimo-instinct-use-vitest
+trigger: "When writing tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Use Vitest
+
+## Action
+
+Use the Vitest testing framework
+
+## Evidence
+
+- Pattern in testing.framework: vitest
+
+---
+id: philotimo-instinct-mock-msw
+trigger: "When mocking API or network calls in tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Mock Msw
+
+## Action
+
+Use msw (Mock Service Worker) for mocking
+
+## Evidence
+
+- Pattern in testing.mockingStyle: msw
+
+---
+id: philotimo-instinct-test-types
+trigger: "When planning tests for a module"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Test Types
+
+## Action
+
+Include unit, integration, and e2e tests as appropriate
+
+## Evidence
+
+- Pattern in testing.testTypes: unit, integration, e2e
+
+---
+id: philotimo-instinct-commit-conventional
+trigger: "When writing a commit message"
+confidence: 0.95
+domain: git
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Commit Conventional
+
+## Action
+
+Use the conventional commit format: <type>(<scope>): <description>
+
+## Evidence
+
+- Pattern in commits.type: conventional
+- Seen in commit: feat(onramp): epic-3 phase 2 — Stripe onramp request builder + client wrapper
+
+---
+id: philotimo-instinct-commit-prefixes
+trigger: "When choosing a commit type"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Commit Prefixes
+
+## Action
+
+Use one of the prefixes: feat, fix, test, docs, refactor
+
+## Evidence
+
+- Pattern in commits.prefixes: feat, fix, test, docs, refactor
+
+---
+id: philotimo-instinct-commit-length
+trigger: "When writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Commit Length
+
+## Action
+
+Keep the commit message concise (average ~69 characters)
+
+## Evidence
+
+- Pattern in commits.averageLength: 69
+
+---
+id: philotimo-instinct-tdd-red-green
+trigger: "When adding a new feature, API route, or contract and following TDD"
+confidence: 0.98
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Tdd Red Green
+
+## Action
+
+First write a failing test/spec (RED), then implement the feature/module (GREEN)
+
+## Evidence
+
+- Workflow: tdd-feature-development-red-green
+- Seen in commits: test(onramp): epic-3 phase 3 RED — session store repository contract, feat(onramp): epic-3 phase 3 GREEN — in-memory session store repository
+
+---
+id: philotimo-instinct-api-endpoint-addition
+trigger: "When implementing a new API route in the Next.js app"
+confidence: 0.93
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Api Endpoint Addition
+
+## Action
+
+Create or update the route handler, add/update the test file, and update/add related type definitions
+
+## Evidence
+
+- Workflow: api-endpoint-addition
+- Pattern in files: src/app/api/**/route.ts, src/app/api/**/route.test.ts, src/types/**.ts
+
+---
+id: philotimo-instinct-security-remediation
+trigger: "When a security review or audit identifies issues"
+confidence: 0.92
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Security Remediation
+
+## Action
+
+Update implementation to add guards/validation/logging, update/add tests for new security cases, and update documentation/review files
+
+## Evidence
+
+- Workflow: security-remediation-hardening
+- Seen in commit: fix(onramp): refuse hash-less settlement in webhook handler (security review HIGH)
+- Pattern in files: .claude/reviews/*.md, prompts/epic-*-remediation-plan.md
+
+---
+id: philotimo-instinct-infra-adapter
+trigger: "When introducing a new infrastructure abstraction (e.g., key-value store, logger)"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Infra Adapter
+
+## Action
+
+Define interface and in-memory/mock implementation, implement production adapter, add/update tests, wire into main logic
+
+## Evidence
+
+- Workflow: infrastructure-adapter-implementation
+- Pattern in files: src/lib/kv/*.ts, src/lib/kv/*.test.ts, src/lib/log/*.ts, src/lib/log/*.test.ts
+
+---
+id: philotimo-instinct-smart-contract-tdd
+trigger: "When adding or modifying smart contract logic or deployment scripts"
+confidence: 0.88
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Smart Contract Tdd
+
+## Action
+
+Write a failing Solidity test, implement the contract/script, update/add deployment scripts, update documentation/runbooks
+
+## Evidence
+
+- Workflow: smart-contract-feature-tdd
+- Pattern in files: contracts/test/**/*.t.sol, contracts/src/**/*.sol, contracts/script/**/*.s.sol, contracts/DEPLOY.md
+
+---
+id: philotimo-instinct-frontend-contract-integration
+trigger: "When a new contract is deployed or the ABI changes and the frontend must be updated"
+confidence: 0.87
+domain: workflow
+source: repo-analysis
+source_repo: mnkprs/Philotimo
+---
+
+# Philotimo Instinct Frontend Contract Integration
+
+## Action
+
+Update contract ABI/address logic in src/lib/contracts.ts, update tests, update .env.local.example and deployment docs
+
+## Evidence
+
+- Workflow: frontend-contract-integration
+- Pattern in files: src/lib/contracts.ts, src/lib/contracts.test.ts, .env.local.example, contracts/DEPLOY.md
+
