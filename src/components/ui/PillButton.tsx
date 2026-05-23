@@ -15,6 +15,14 @@ interface PillButtonBaseProps {
 interface PillButtonAsButton extends PillButtonBaseProps {
   href?: undefined;
   type?: "button" | "submit";
+  onClick?: () => void;
+  /**
+   * When true, the pill renders as a non-interactive `<span>` instead of
+   * `<button>`. Use when the pill is a visual CTA inside an already-
+   * interactive parent (e.g. an `<a>` card link) — nesting a `<button>`
+   * inside an anchor is invalid HTML and wastes a tab stop.
+   */
+  presentation?: boolean;
 }
 
 interface PillButtonAsLink extends PillButtonBaseProps {
@@ -83,6 +91,21 @@ export function PillButton(props: PillButtonProps) {
   }
 
   const buttonType = "type" in props ? props.type : "button";
+  const onClick = "onClick" in props ? props.onClick : undefined;
+  const presentation =
+    "presentation" in props ? props.presentation : undefined;
+
+  // Inside an interactive parent (an `<a>` card link), render as a
+  // non-interactive `<span>` styled identically. Keeps the pill text in
+  // the accessible name without nesting interactive content.
+  if (presentation) {
+    return (
+      <span className={classes} {...dataAttrs}>
+        {children}
+        {icon}
+      </span>
+    );
+  }
 
   return (
     <button
@@ -90,6 +113,7 @@ export function PillButton(props: PillButtonProps) {
       className={classes}
       disabled={disabled}
       aria-disabled={disabled || undefined}
+      onClick={onClick}
       {...dataAttrs}
     >
       {children}
