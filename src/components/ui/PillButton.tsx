@@ -15,6 +15,7 @@ interface PillButtonBaseProps {
 interface PillButtonAsButton extends PillButtonBaseProps {
   href?: undefined;
   type?: "button" | "submit";
+  onClick?: () => void;
 }
 
 interface PillButtonAsLink extends PillButtonBaseProps {
@@ -83,6 +84,7 @@ export function PillButton(props: PillButtonProps) {
   }
 
   const buttonType = "type" in props ? props.type : "button";
+  const onClick = "onClick" in props ? props.onClick : undefined;
 
   return (
     <button
@@ -90,6 +92,7 @@ export function PillButton(props: PillButtonProps) {
       className={classes}
       disabled={disabled}
       aria-disabled={disabled || undefined}
+      onClick={onClick}
       {...dataAttrs}
     >
       {children}
