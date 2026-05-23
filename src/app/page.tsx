@@ -9,6 +9,10 @@ import { NavBar } from "@/components/landing/NavBar";
 import { TrackMount } from "@/components/analytics/TrackMount";
 import { getCampaigns } from "@/lib/campaigns";
 
+// Per-request SSR so the nonce-based CSP (src/proxy.ts) applies — static
+// prerender bakes scripts at build time with no nonce.
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <>
