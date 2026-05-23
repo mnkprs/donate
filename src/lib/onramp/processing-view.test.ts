@@ -39,7 +39,7 @@ describe("buildProcessingView", () => {
         donorEmail: "manos@protonmail.com",
         campaignId: "pcrf",
       },
-      campaign: { name: "Palestine Children's Relief Fund", ein: "95-4374418" },
+      campaign: { name: "Palestine Children's Relief Fund", ein: "93-1057665" },
       now: new Date(Date.UTC(2026, 4, 21, 17, 34, 1)),
     });
 
@@ -49,7 +49,7 @@ describe("buildProcessingView", () => {
       grossCents: 500,
       charityName: "Palestine Children's Relief Fund",
       charityInitials: "PC",
-      ein: "95-4374418",
+      ein: "93-1057665",
       donorEmailMasked: "m***@protonmail.com",
       startedAt: "5:34:01 PM UTC · May 21, 2026",
     });

@@ -12,7 +12,7 @@ export const CAMPAIGNS: readonly Campaign[] = [
   {
     id: "pcrf",
     name: "Palestine Children's Relief Fund",
-    ein: "95-4374418",
+    ein: "93-1057665",
     tag: "Urgent · Gaza",
     mission:
       "Medical aid, trauma care, and surgical missions for injured children across Gaza and the West Bank.",
@@ -23,7 +23,7 @@ export const CAMPAIGNS: readonly Campaign[] = [
   {
     id: "wck",
     name: "World Central Kitchen",
-    ein: "27-1273172",
+    ein: "27-3521132",
     tag: "Active · Ukraine, Sudan, Gaza",
     mission:
       "Hot meals on the ground within hours of any crisis — wherever cooks can stand up a kitchen.",

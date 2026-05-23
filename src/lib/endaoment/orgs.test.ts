@@ -8,7 +8,7 @@ import {
   type OrgAddressMap,
 } from "./orgs";
 
-const PCRF_EIN = "95-4374418";
+const PCRF_EIN = "93-1057665";
 const SEPOLIA_ADDR =
   "0x1111111111111111111111111111111111111111" as Address;
 const BASE_ADDR = "0x2222222222222222222222222222222222222222" as Address;

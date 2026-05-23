@@ -42,7 +42,7 @@ describe("getCampaignById", () => {
 
     expect(result).toBeDefined();
     expect(result?.name).toBe("Palestine Children's Relief Fund");
-    expect(result?.ein).toBe("95-4374418");
+    expect(result?.ein).toBe("93-1057665");
   });
 
   it("returns the WCK entry by id", () => {

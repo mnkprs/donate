@@ -83,7 +83,7 @@ const MOCK_BUNDLE = {
   data: {
     donorShort: "0x5555…5555",
     charity: "PCRF",
-    ein: "95-4374418",
+    ein: "93-1057665",
     mission: "Mission text",
     amount: "$1.000000",
     amountUsdc: "1.000000",
