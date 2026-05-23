@@ -66,8 +66,23 @@ describe("NotFoundScreen", () => {
       "%s — broken-link card has a mailto CTA",
       (variant) => {
         const html = renderToString(<NotFoundScreen variant={variant} />);
-        expect(html).toContain("mailto:hello@philotimo.app");
         expect(html).toContain("Report a broken link");
+        // Anchor the assertion inside the broken-link card so the test can't
+        // pass spuriously on the mailto used by the "Recover a receipt" exit.
+        expect(html).toMatch(
+          /Report a broken link[\s\S]+mailto:hello@philotimo\.app\?subject=Broken%20link/,
+        );
+      },
+    );
+
+    test.each(allVariants)(
+      "%s — no <button> nested inside an <a> (invalid HTML / a11y)",
+      (variant) => {
+        const html = renderToString(<NotFoundScreen variant={variant} />);
+        // HTML5 forbids interactive content as an anchor descendant. The
+        // exit cards put a styled pill inside the card-as-link — that pill
+        // must render as <span>, never <button>.
+        expect(html).not.toMatch(/<a[\s\S]*?<button/);
       },
     );
 

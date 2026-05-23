@@ -49,15 +49,15 @@ const VARIANTS: Record<NotFoundVariant, VariantContent> = {
 };
 
 interface ExitCard {
-  eyebrow: string;
-  title: string;
-  body: string;
-  cta: string;
-  variant: "primary" | "ghost";
-  href: string;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly body: string;
+  readonly cta: string;
+  readonly variant: "primary" | "ghost";
+  readonly href: string;
 }
 
-const EXIT_CARDS: ExitCard[] = [
+const EXIT_CARDS: readonly ExitCard[] = [
   {
     eyebrow: "Most people want",
     title: "Start a new donation",
@@ -305,10 +305,14 @@ function NotFoundExitCard({ exit }: { exit: ExitCard }) {
         </p>
       </div>
       <div style={{ display: "inline-flex" }}>
+        {/* The card itself is the link — render the pill as a non-interactive
+            `<span>` so we don't nest a `<button>` inside the anchor (invalid
+            HTML5, double tab stop, screen-reader double-affordance). */}
         <PillButton
           variant={isPrimary ? "primary" : "ghost"}
           size="sm"
           icon={<ArrowRight color={isPrimary ? "#fff" : colors.ink} />}
+          presentation
         >
           {exit.cta}
         </PillButton>
