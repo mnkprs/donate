@@ -11,6 +11,7 @@
  * pipeline and does not call the live Endaoment API. Snapshot + on-chain data.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import {
   toEventSelector,
   type Address,
@@ -163,7 +164,11 @@ export async function loadReceiptForMetadata(
     const amountUsdc = formatUsdc(decoded.netToEntity);
 
     return { charityName, amountUsdc, verified: true };
-  } catch {
+  } catch (err: unknown) {
+    // Unexpected failure (RPC/decode). Report the error to Sentry — only the
+    // error object, never the txid or chainId — then preserve the existing
+    // contract: never throw into the page, return null.
+    Sentry.captureException(err);
     return null;
   }
 }

@@ -18,6 +18,7 @@
  * unit-testable; the route (`webhook/route.ts`) handles transport + auth.
  */
 
+import * as Sentry from "@sentry/nextjs";
 import { z } from "zod";
 import type { KvStore } from "@/lib/kv/kv-store";
 import type { OnrampSession, OnrampStatus } from "@/types/onramp";
@@ -192,6 +193,10 @@ export async function applyOnrampSessionEvent(
 
     await store.update(parsed.data.id, patch);
   } catch (err: unknown) {
+    // Report the failure to Sentry before unwinding. Pass ONLY the error — no
+    // session object, donor email, client secret, or tx hash — so no donor PII
+    // leaves the process (the route still logs via the redacting pino logger).
+    Sentry.captureException(err);
     // Any failure mid-apply must NOT leave the event claimed, or the route's
     // 500 → Stripe retry would no-op on the stale claim. Release, then rethrow.
     await processedEvents.release(event.id);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { base, baseSepolia } from "wagmi/chains";
 
+import { TrackMount } from "@/components/analytics/TrackMount";
 import { ReceiptView } from "@/components/receipt/ReceiptView";
 import { loadReceiptForMetadata } from "@/lib/receipt/loadReceiptForMetadata";
 
@@ -99,6 +100,7 @@ export default async function ReceiptPage({ params }: ReceiptPageProps) {
 
   return (
     <main>
+      <TrackMount event={{ name: "receipt_viewed" }} />
       <ReceiptView txid={txid} />
     </main>
   );

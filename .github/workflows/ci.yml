@@ -47,6 +47,12 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # Real gate: a broken production build must fail CI. Runs after the
+      # cheaper checks so type/unit failures surface first. `npm run build`
+      # maps to `next build`; reuses the npm ci tree installed above.
+      - name: Build
+        run: npm run build
+
   contracts:
     name: Contracts (forge build · test)
     runs-on: ubuntu-latest

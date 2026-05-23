@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 
+import { trackShared, type ShareChannel } from "@/lib/analytics/events";
 import { colors } from "@/lib/tokens";
 
 interface ShareRowProps {
@@ -53,11 +54,13 @@ export function ShareRow({
           <CopyLinkButton shareUrl={shareUrl} />
           <ShareIntentButton
             label="Twitter"
+            channel="twitter"
             href={twitterIntent(shareText, shareUrl)}
             icon={<TwitterIcon />}
           />
           <ShareIntentButton
             label="WhatsApp"
+            channel="whatsapp"
             href={whatsappIntent(shareText, shareUrl)}
             icon={<WhatsAppIcon />}
           />
@@ -80,6 +83,7 @@ function CopyLinkButton({ shareUrl }: CopyLinkButtonProps) {
     if (!target) return;
     try {
       await navigator.clipboard.writeText(target);
+      trackShared("copy");
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch {
@@ -97,16 +101,18 @@ function CopyLinkButton({ shareUrl }: CopyLinkButtonProps) {
 
 interface ShareIntentButtonProps {
   label: string;
+  channel: ShareChannel;
   href: string;
   icon: ReactNode;
 }
 
-function ShareIntentButton({ label, href, icon }: ShareIntentButtonProps) {
+function ShareIntentButton({ label, channel, href, icon }: ShareIntentButtonProps) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => trackShared(channel)}
       style={chipStyle(false)}
     >
       {icon}
