@@ -5,7 +5,7 @@ import type { Address } from "viem";
 import type { OrgAddressMap } from "./orgs";
 import { deriveBaseScanUrl, getCharity } from "./registry";
 
-const PCRF_EIN = "95-4374418";
+const PCRF_EIN = "93-1057665";
 const PCRF_ADDR =
   "0x1111111111111111111111111111111111111111" as Address;
 
@@ -76,9 +76,12 @@ describe("getCharity", () => {
   });
 
   it("defaults to the production address map when none is injected", () => {
-    // Sparse production map today → name resolves, address is null.
+    // Production map now carries the dev-registry Base Sepolia entries for
+    // the three curated orgs (PCRF/WCK/Direct Relief) — assert the wiring
+    // resolves a real address rather than the previous sparse-null state.
     const charity = getCharity("pcrf", baseSepolia.id);
     expect(charity?.name).toBe("Palestine Children's Relief Fund");
-    expect(charity?.endaomentOrgAddress).toBeNull();
+    expect(charity?.endaomentOrgAddress).toMatch(/^0x[a-fA-F0-9]{40}$/);
+    expect(charity?.baseScanUrl).toContain("sepolia.basescan.org/address/");
   });
 });

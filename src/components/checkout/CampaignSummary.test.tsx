@@ -7,7 +7,7 @@ import type { Campaign } from "@/types/campaign";
 const sampleCampaign: Campaign = {
   id: "pcrf",
   name: "Palestine Children's Relief Fund",
-  ein: "95-4374418",
+  ein: "93-1057665",
   tag: "Urgent · Gaza",
   mission:
     "Medical aid, trauma care, and surgical missions for injured children across Gaza and the West Bank.",
@@ -36,7 +36,7 @@ describe("CampaignSummary", () => {
 
   test("renders the EIN with 501(c)(3) Endaoment attribution", () => {
     const html = renderToString(<CampaignSummary campaign={sampleCampaign} />);
-    expect(html).toContain("EIN 95-4374418");
+    expect(html).toContain("EIN 93-1057665");
     expect(html).toContain("501(c)(3)");
     expect(html).toContain("Endaoment");
   });

@@ -65,7 +65,7 @@ function makeFakeClient(
 beforeEach(() => {
   mockedGetRouterAddress.mockReturnValue(ROUTER_ADDRESS);
   mockedGetOrgAddress.mockImplementation((ein: string, chainId: number) =>
-    ein === "95-4374418" && chainId === FIXTURE_CHAIN_ID ? ORG_ENTITY : undefined,
+    ein === "93-1057665" && chainId === FIXTURE_CHAIN_ID ? ORG_ENTITY : undefined,
   );
   mockedGetPublicClient.mockReturnValue(makeFakeClient(MOCK_SEPOLIA_RECEIPT));
 });

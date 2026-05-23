@@ -99,12 +99,12 @@ function makeFakeClient(
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  // Default: router address set, EIN "95-4374418" maps to ORG_ENTITY on the
+  // Default: router address set, EIN "93-1057665" maps to ORG_ENTITY on the
   // fixture chain — i.e. Palestine Children's Relief Fund.
   mockedGetRouterAddress.mockReturnValue(ROUTER_ADDRESS);
   mockedGetOrgAddress.mockImplementation(
     (ein: string, chainId: number) => {
-      if (ein === "95-4374418" && chainId === FIXTURE_CHAIN_ID) {
+      if (ein === "93-1057665" && chainId === FIXTURE_CHAIN_ID) {
         return ORG_ENTITY;
       }
       return undefined;

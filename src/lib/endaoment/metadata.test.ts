@@ -53,7 +53,7 @@ const mockedLogger = logger as unknown as {
 const TEST_ENV = { ENDAOMENT_API_URL: "https://api.endaoment.org" };
 
 /** EIN that IS present in snapshot.json (PCRF). */
-const SNAPSHOT_EIN = "95-4374418";
+const SNAPSHOT_EIN = "93-1057665";
 
 /** EIN that is NOT in snapshot.json and not in the live API. */
 const UNKNOWN_EIN = "00-0000000";

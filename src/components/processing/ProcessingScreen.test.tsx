@@ -11,7 +11,7 @@ const view: ProcessingView = {
   grossCents: 500,
   charityName: "Palestine Children's Relief Fund",
   charityInitials: "PC",
-  ein: "95-4374418",
+  ein: "93-1057665",
   donorEmailMasked: "m***@protonmail.com",
   startedAt: "5:34:01 PM UTC · May 21, 2026",
 };
@@ -40,7 +40,7 @@ describe("ProcessingScreen — hero", () => {
 
   test("shows the charity anchor chip with EIN", () => {
     const html = render();
-    expect(html).toContain("EIN 95-4374418 · 501(c)(3)");
+    expect(html).toContain("EIN 93-1057665 · 501(c)(3)");
   });
 });
 
